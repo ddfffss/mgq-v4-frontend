@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MGQ Message Loader</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; background: #070c18; color: #ded2b8; }
+    body { min-height: 100vh; font-family: "Noto Serif SC", "Microsoft YaHei", serif; }
+    #app { min-height: 100vh; }
+    .loader {
+      min-height: 100vh; display: grid; place-items: center; padding: 24px;
+      background: radial-gradient(circle at 50% 22%, #25334f 0, #111827 34rem, #070c18 75%);
+    }
+    .loader-card {
+      width: min(640px, 100%); padding: 28px; text-align: left;
+      border: 1px solid rgba(202, 166, 90, .42); border-radius: 6px;
+      background: rgba(12, 18, 31, .92); box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+    }
+    .loader-kicker { margin: 0 0 8px; color: #caa65a; font-size: 12px; letter-spacing: .18em; }
+    .loader-title { margin: 0 0 12px; color: #f0e5cf; font-size: 22px; font-weight: 600; }
+    .loader-status { margin: 0; color: #a89b83; font-size: 14px; line-height: 1.7; }
+    .loader-source {
+      display: none; max-height: 260px; overflow: auto; margin: 18px 0 0; padding: 12px;
+      border: 1px solid rgba(202, 166, 90, .28); border-radius: 4px;
+      background: rgba(5, 8, 14, .72); color: #d9c9a8; white-space: pre-wrap;
+      font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+    .loader.error .loader-source { display: block; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main id="mgq-loader" class="loader" aria-live="polite">
+      <section class="loader-card">
+        <p class="loader-kicker">MONSTER GIRL QUEST - MESSAGE</p>
+        <h1 class="loader-title">Loading message frontend</h1>
+        <p id="mgq-loader-status" class="loader-status">Preparing message-local context...</p>
+        <pre id="mgq-loader-source" class="loader-source"></pre>
+      </section>
+    </main>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+
+    const SCRIPT_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.js';
+    const STYLE_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css';
+    const MVU_BUNDLE_URL = 'https://testingcf.jsdelivr.net/gh/MagicalAstrogy/MagVarUpdate@beta/artifact/bundle.js';
+    const INLINE_SCRIPT_B64 = '__MGQ_INLINE_SCRIPT_B64__';
+    const INLINE_STYLE_B64 = '__MGQ_INLINE_STYLE_B64__';
+    const INLINE_BUNDLE_REQUIRED = '__MGQ_INLINE_BUNDLE_REQUIRED__' === 'true';
+    const BRIDGE_APIS = [
+      'getCurrentMessageId',
+      'getChatMessages',
+      'createChatMessages',
+      'setChatMessages',
+      'generate',
+      'triggerSlash',
+      'executeSlashCommand',
+      'eventOn',
+      'eventEmit',
+      'eventRemoveListener',
+      'tavern_events',
+      'waitGlobalInitialized',
+      'initializeGlobal',
+      'Mvu',
+      'MGQ',
+      'MGQController',
+      'SillyTavern',
+    ];
+    const loader = document.getElementById('mgq-loader');
+    const status = document.getElementById('mgq-loader-status');
+    const source = document.getElementById('mgq-loader-source');
+    let fallbackText = '';
+
+    function hasInlineAsset(value, placeholder) {
+      return Boolean(value && value !== placeholder);
+    }
+
+    function decodeInlineAsset(value) {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    function appendInlineScript(onload, onerror) {
+      try {
+        document.getElementById('mgq-v4-script')?.remove();
+        const script = document.createElement('script');
+        script.id = 'mgq-v4-script';
+        script.textContent = decodeInlineAsset(INLINE_SCRIPT_B64);
+        document.head.appendChild(script);
+        if (typeof onload === 'function') setTimeout(onload, 0);
+      } catch (error) {
+        if (typeof onerror === 'function') onerror(error);
+        else throw error;
+      }
+    }
+
+    function showError(message, rawText) {
+      loader.classList.add('error');
+      status.textContent = message || 'Message frontend bootstrap failed.';
+      fallbackText = String(rawText || fallbackText || 'No message source was available.');
+      source.textContent = fallbackText;
+    }
+
+    function copyBridgeApis() {
+      const parentWindow = globalThis.parent;
+      if (!parentWindow || parentWindow === globalThis) return;
+      const stObject = parentWindow.SillyTavern;
+      const stContext = typeof stObject?.getContext === 'function' ? stObject.getContext() : {};
+
+      for (const name of BRIDGE_APIS) {
+        if (typeof globalThis[name] !== 'undefined') continue;
+        const owner = typeof parentWindow[name] !== 'undefined'
+          ? parentWindow
+          : typeof stObject?.[name] !== 'undefined'
+            ? stObject
+            : stContext;
+        const value = owner?.[name];
+        if (typeof value === 'function') {
+          globalThis[name] = value.bind(owner);
+        } else if (typeof value !== 'undefined') {
+          globalThis[name] = value;
+        }
+      }
+    }
+
+    async function waitForSharedGlobal(name, timeoutMs = 4000) {
+      if (typeof globalThis[name] !== 'undefined') return true;
+      copyBridgeApis();
+      if (typeof globalThis[name] !== 'undefined') return true;
+      if (typeof globalThis.waitGlobalInitialized !== 'function') return false;
+
+      try {
+        const timeout = new Promise((resolve) => setTimeout(() => resolve(undefined), timeoutMs));
+        const value = await Promise.race([
+          Promise.resolve(globalThis.waitGlobalInitialized(name)).catch(() => undefined),
+          timeout,
+        ]);
+        if (typeof value !== 'undefined' && typeof globalThis[name] === 'undefined') {
+          globalThis[name] = value;
+        }
+      } catch (_) {}
+
+      copyBridgeApis();
+      return typeof globalThis[name] !== 'undefined';
+    }
+
+    async function ensureMvuRuntime() {
+      if (typeof globalThis.Mvu !== 'undefined') return true;
+      await waitForSharedGlobal('Mvu', 1500);
+      if (typeof globalThis.Mvu !== 'undefined') return true;
+      try {
+        await import(MVU_BUNDLE_URL);
+      } catch (_) {}
+      return waitForSharedGlobal('Mvu', 3000);
+    }
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value ?? {}));
+    }
+
+    function nowIso() {
+      try { return new Date().toISOString(); } catch (_) { return ''; }
+    }
+
+    function isRecord(value) {
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    }
+
+    function mvuOption() {
+      return { type: 'message', message_id: 'latest' };
+    }
+
+    function getMvuData() {
+      try {
+        return globalThis.Mvu?.getMvuData?.(mvuOption()) || null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function stateFromVariables(variables) {
+      if (!isRecord(variables)) return null;
+      return isRecord(variables.stat_data) ? variables.stat_data : variables;
+    }
+
+    function localStateStorageKey() {
+      const context = globalThis.SillyTavern?.getContext?.();
+      const chatId = context?.chatId
+        ?? context?.characterId
+        ?? context?.chat?.[0]?.chat
+        ?? 'unknown-chat';
+      return `mgq-v4-local-controller:${String(chatId)}`;
+    }
+
+    function readStoredState() {
+      try {
+        const raw = globalThis.sessionStorage?.getItem(localStateStorageKey());
+        return raw ? JSON.parse(raw) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function writeStoredState(state) {
+      try {
+        globalThis.sessionStorage?.setItem(localStateStorageKey(), JSON.stringify(clone(state)));
+      } catch (_) {}
+    }
+
+    function readControllerState() {
+      return stateFromVariables(getMvuData()) || readStoredState() || {};
+    }
+
+    function hydrateLocalState(state) {
+      const output = clone(state || {});
+      const profile = output['主角档案'] = isRecord(output['主角档案']) ? output['主角档案'] : {};
+      profile.HP = Math.max(0, Number(profile.HP ?? profile.maxHP ?? 52) || 0);
+      profile.maxHP = Math.max(0, Number(profile.maxHP ?? profile.HP ?? 52) || 0);
+      profile.SP = Math.max(0, Number(profile.SP ?? profile.maxSP ?? 19) || 0);
+      profile.maxSP = Math.max(0, Number(profile.maxSP ?? profile.SP ?? 19) || 0);
+      if (!Array.isArray(profile['持续变化'])) profile['持续变化'] = [];
+      output['战斗状态'] = {
+        battle_id: '',
+        revision: 0,
+        active: false,
+        lifecycle: 'inactive',
+        source_message_id: -1,
+        snapshot: {},
+        updated_at: '',
+        ...(isRecord(output['战斗状态']) ? output['战斗状态'] : {}),
+      };
+      output['前端事务'] = {
+        token: '',
+        kind: '',
+        status: 'idle',
+        source_message_id: -1,
+        battle_id: '',
+        revision: 0,
+        updated_at: '',
+        ...(isRecord(output['前端事务']) ? output['前端事务'] : {}),
+      };
+      return output;
+    }
+
+    function itemLabel(item) {
+      if (typeof item === 'string') return item;
+      const name = String(item?.name ?? item?.id ?? '').trim();
+      const quantity = Number(item?.quantity ?? 1);
+      return quantity > 1 ? `${name} x${quantity}` : name;
+    }
+
+    function syncBattleSnapshotToProfile(state, snapshot) {
+      const profile = state['主角档案'] = isRecord(state['主角档案']) ? state['主角档案'] : {};
+      const player = snapshot?.player || {};
+      profile.HP = Math.max(0, Number(player.hp ?? profile.HP ?? 0) || 0);
+      profile.maxHP = Math.max(0, Number(player.max_hp ?? profile.maxHP ?? profile.HP ?? 0) || 0);
+      profile.SP = Math.max(0, Number(player.sp ?? profile.SP ?? 0) || 0);
+      profile.maxSP = Math.max(0, Number(player.max_sp ?? profile.maxSP ?? profile.SP ?? 0) || 0);
+      if (Array.isArray(player.items)) {
+        profile['物品'] = player.items.map(itemLabel).filter(Boolean);
+      }
+    }
+
+    function latestAssistantMessageId() {
+      const chat = globalThis.SillyTavern?.getContext?.()?.chat || [];
+      return findLatestAssistantMessageId(chat);
+    }
+
+    function requireLatestMessage(messageId) {
+      const latestId = latestAssistantMessageId();
+      if (Number(latestId) !== Number(messageId)) {
+        throw new Error('当前消息不是最新消息，拒绝写入');
+      }
+    }
+
+    function currentHydratedState() {
+      return hydrateLocalState(readControllerState());
+    }
+
+    async function replaceLocalState(state) {
+      const data = getMvuData() || {};
+      data.stat_data = clone(state);
+      writeStoredState(state);
+      globalThis.MGQ = globalThis.MGQ || {};
+      globalThis.MGQ._lastState = clone(state);
+      if (typeof globalThis.Mvu?.replaceMvuData === 'function') {
+        try { await globalThis.Mvu?.replaceMvuData(data, mvuOption()); return; } catch (_) {}
+      }
+      if (typeof globalThis.Mvu?.setVariables === 'function') {
+        try { await globalThis.Mvu?.setVariables(clone(state)); return; } catch (_) {}
+      }
+    }
+
+    function assertCheckpointWriteAllowed(checkpoint, battleId, revision) {
+      if (checkpoint.active && checkpoint.battle_id && checkpoint.battle_id !== battleId) {
+        throw new Error('已有进行中的战斗，不能切换battleId');
+      }
+      if (checkpoint.battle_id === battleId && revision < Number(checkpoint.revision || 0)) {
+        throw new Error('版本不能回退');
+      }
+    }
+
+    function getBattleCheckpoint() {
+      return clone(currentHydratedState()['战斗状态']);
+    }
+
+    async function saveBattleCheckpoint(payload = {}) {
+      requireLatestMessage(payload.messageId);
+      const state = currentHydratedState();
+      const checkpoint = state['战斗状态'];
+      const battleId = String(payload.battleId || payload.snapshot?.battle_id || '').trim();
+      const revision = Number(payload.revision ?? payload.snapshot?.revision);
+      if (!battleId) throw new Error('battleId不能为空');
+      if (!Number.isFinite(revision) || revision < 0) throw new Error('revision无效');
+      assertCheckpointWriteAllowed(checkpoint, battleId, revision);
+      const snapshot = clone(payload.snapshot || {});
+      state['战斗状态'] = {
+        battle_id: battleId,
+        revision,
+        active: Boolean(payload.active),
+        lifecycle: payload.active ? 'active' : 'inactive',
+        source_message_id: Number(payload.messageId),
+        snapshot,
+        updated_at: nowIso(),
+      };
+      syncBattleSnapshotToProfile(state, snapshot);
+      await replaceLocalState(state);
+      return clone(state);
+    }
+
+    async function markBattleTerminal(payload = {}) {
+      requireLatestMessage(payload.messageId);
+      const state = currentHydratedState();
+      const checkpoint = state['战斗状态'];
+      const battleId = String(payload.battleId || payload.snapshot?.battle_id || '').trim();
+      const revision = Number(payload.revision ?? payload.snapshot?.revision);
+      if (!battleId || !Number.isFinite(revision)) throw new Error('战斗终局参数无效');
+      assertCheckpointWriteAllowed(checkpoint, battleId, revision);
+      const snapshot = clone(payload.snapshot || {});
+      state['战斗状态'] = {
+        battle_id: battleId,
+        revision,
+        active: true,
+        lifecycle: 'terminal-pending-ai',
+        source_message_id: Number(payload.messageId),
+        snapshot,
+        updated_at: nowIso(),
+      };
+      syncBattleSnapshotToProfile(state, snapshot);
+      await replaceLocalState(state);
+      return clone(state);
+    }
+
+    async function confirmBattleResolution(payload = {}) {
+      requireLatestMessage(payload.messageId);
+      const state = currentHydratedState();
+      const checkpoint = state['战斗状态'];
+      const battleId = String(payload.battleId || '').trim();
+      const revision = Number(payload.revision);
+      if (checkpoint.battle_id !== battleId) throw new Error('battleId不匹配');
+      if (Number(checkpoint.revision) !== revision) throw new Error('版本不匹配');
+      if (Number(payload.messageId) <= Number(checkpoint.source_message_id)) {
+        throw new Error('结算消息必须晚于战斗消息');
+      }
+      state['战斗状态'] = {
+        ...checkpoint,
+        active: false,
+        lifecycle: 'confirmed-finished',
+        source_message_id: Number(payload.messageId),
+        updated_at: nowIso(),
+      };
+      await replaceLocalState(state);
+      return clone(state);
+    }
+
+    async function claimInteraction(payload = {}) {
+      requireLatestMessage(payload.messageId);
+      const state = currentHydratedState();
+      const current = state['前端事务'];
+      const token = String(payload.token || '').trim();
+      if (!token) throw new Error('事务token不能为空');
+      if (current.status === 'claimed') throw new Error('前端事务已被占用');
+      if (current.status === 'committed') {
+        if (current.token === token) throw new Error('事务已经提交');
+        if (Number(payload.messageId) <= Number(current.source_message_id)) throw new Error('事务已经提交');
+      }
+      state['前端事务'] = {
+        token,
+        kind: String(payload.kind || ''),
+        status: 'claimed',
+        source_message_id: Number(payload.messageId),
+        battle_id: String(payload.battleId || ''),
+        revision: Math.max(0, Number(payload.revision ?? 0) || 0),
+        updated_at: nowIso(),
+      };
+      await replaceLocalState(state);
+      return clone(state['前端事务']);
+    }
+
+    async function commitInteraction(payload = {}) {
+      const state = currentHydratedState();
+      const current = state['前端事务'];
+      const token = String(payload.token || '').trim();
+      if (!token || current.token !== token || current.status !== 'claimed') {
+        throw new Error('事务不匹配，无法提交');
+      }
+      state['前端事务'] = { ...current, status: 'committed', updated_at: nowIso() };
+      await replaceLocalState(state);
+      return clone(state['前端事务']);
+    }
+
+    async function releaseInteraction(payload = {}) {
+      const state = currentHydratedState();
+      const current = state['前端事务'];
+      const token = String(payload.token || '').trim();
+      if (!token || current.token !== token) return clone(current);
+      state['前端事务'] = {
+        token: '',
+        kind: '',
+        status: 'idle',
+        source_message_id: -1,
+        battle_id: '',
+        revision: 0,
+        updated_at: nowIso(),
+      };
+      await replaceLocalState(state);
+      return clone(state['前端事务']);
+    }
+
+    function installLocalControllerBridge() {
+      if (globalThis.MGQController?.saveBattleCheckpoint) return true;
+      const bridge = Object.freeze({
+        getStatus: () => {
+          return clone(currentHydratedState());
+        },
+        getBattleCheckpoint,
+        saveBattleCheckpoint,
+        markBattleTerminal,
+        confirmBattleResolution,
+        claimInteraction,
+        commitInteraction,
+        releaseInteraction,
+      });
+      globalThis.MGQController = bridge;
+      globalThis.MGQ = globalThis.MGQ || {};
+      globalThis.MGQ.bridge = bridge;
+      return true;
+    }
+
+    async function ensureSharedBridgeApis() {
+      await ensureMvuRuntime();
+      await waitForSharedGlobal('MGQController', 1500);
+      installLocalControllerBridge();
+      copyBridgeApis();
+    }
+
+    function getRecordMessageIds(record, fallbackIndex) {
+      const ids = [];
+      const candidates = [record?.mesid, record?.id, fallbackIndex, record?.message_id];
+      for (const value of candidates) {
+        const numeric = Number(value);
+        if (Number.isInteger(numeric) && numeric >= 0 && !ids.includes(numeric)) ids.push(numeric);
+      }
+      return ids;
+    }
+
+    function getRecordMessageId(record, fallbackIndex) {
+      return getRecordMessageIds(record, fallbackIndex)[0];
+    }
+
+    function recordMessageIdMatches(record, fallbackIndex, messageId) {
+      return getRecordMessageIds(record, fallbackIndex).includes(Number(messageId));
+    }
+
+    function findLatestAssistantMessageEntry(chat) {
+      if (!Array.isArray(chat)) return undefined;
+      for (let index = chat.length - 1; index >= 0; index--) {
+        const record = chat[index];
+        if (!record?.is_user) return { record, index };
+      }
+      return undefined;
+    }
+
+    function findLatestAssistantMessageId(chat) {
+      const latest = findLatestAssistantMessageEntry(chat);
+      return getRecordMessageId(latest?.record, latest?.index);
+    }
+
+    function getContextChat() {
+      return globalThis.SillyTavern?.getContext?.()?.chat || [];
+    }
+
+    function getContextChatRecord(messageId) {
+      const chat = getContextChat();
+      if (!Array.isArray(chat)) return undefined;
+      return chat.find((item, index) => recordMessageIdMatches(item, index, messageId))
+        || chat[messageId];
+    }
+
+    async function getHelperChatRecord(messageId) {
+      if (typeof globalThis.getChatMessages !== 'function') return undefined;
+      const records = await Promise.resolve(globalThis.getChatMessages(messageId));
+      const recordList = Array.isArray(records) ? records : [records];
+      return recordList.find((item, index) => recordMessageIdMatches(item, index, messageId))
+        || recordList[0];
+    }
+
+    function resolveRawMessageText(contextRecord, helperRecord) {
+      return contextRecord?.mes
+        ?? contextRecord?.message
+        ?? helperRecord?.message
+        ?? helperRecord?.mes;
+    }
+
+    async function buildMessageContext() {
+      if (typeof globalThis.getCurrentMessageId !== 'function') {
+        throw new Error('Missing getCurrentMessageId bridge API.');
+      }
+
+      const messageId = Number(globalThis.getCurrentMessageId());
+      if (!Number.isFinite(messageId)) {
+        throw new Error('Current message id is not numeric.');
+      }
+
+      const contextRecord = getContextChatRecord(messageId);
+      const helperRecord = resolveRawMessageText(contextRecord, undefined)
+        ? undefined
+        : await getHelperChatRecord(messageId);
+      const rawText = resolveRawMessageText(contextRecord, helperRecord);
+      fallbackText = String(rawText || '');
+      if (!fallbackText) {
+        throw new Error('Current message source is empty.');
+      }
+
+      const chat = getContextChat();
+      const latestMessage = findLatestAssistantMessageEntry(chat);
+      const isLatest = Boolean(
+        latestMessage && recordMessageIdMatches(latestMessage.record, latestMessage.index, messageId),
+      );
+      globalThis.__MGQ_MESSAGE_CONTEXT__ = Object.freeze({
+        kind: 'message',
+        messageId,
+        rawText: fallbackText,
+        isLatest,
+      });
+    }
+
+    function loadStyle() {
+      document.getElementById('mgq-v4-style')?.remove();
+      if (hasInlineAsset(INLINE_STYLE_B64, '__MGQ_INLINE_STYLE_B64__')) {
+        const style = document.createElement('style');
+        style.id = 'mgq-v4-inline-style';
+        style.textContent = decodeInlineAsset(INLINE_STYLE_B64);
+        document.head.appendChild(style);
+        return;
+      }
+      const link = document.createElement('link');
+      link.id = 'mgq-v4-style';
+      link.rel = 'stylesheet';
+      link.href = STYLE_URL;
+      link.onerror = () => showError('Failed to load mgq-v4.css.', fallbackText);
+      document.head.appendChild(link);
+    }
+
+    function loadScript() {
+      if (INLINE_BUNDLE_REQUIRED || hasInlineAsset(INLINE_SCRIPT_B64, '__MGQ_INLINE_SCRIPT_B64__')) {
+        return new Promise((resolve, reject) => appendInlineScript(resolve, reject));
+      }
+      return new Promise((resolve, reject) => {
+        document.getElementById('mgq-v4-script')?.remove();
+        const script = document.createElement('script');
+        script.id = 'mgq-v4-script';
+        script.src = SCRIPT_URL;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Failed to load mgq-v4.js.'));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function bootstrap() {
+      try {
+        copyBridgeApis();
+        await ensureSharedBridgeApis();
+        await buildMessageContext();
+        status.textContent = 'Loading shared message frontend...';
+        loadStyle();
+        await loadScript();
+      } catch (error) {
+        showError(error?.message || 'Message frontend bootstrap failed.', fallbackText);
+      }
+    }
+
+    bootstrap();
+  })();
+  </script>
+</body>
+</html>

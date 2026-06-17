@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>勇战 ADV</title>
+  <link id="mgq-v4-style" rel="stylesheet" href="https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { min-height: 100%; margin: 0; background: #070c18; color: #ded2b8; }
+    body { min-height: 100vh; font-family: "Noto Serif SC", "Microsoft YaHei", serif; }
+    #app { min-height: 100vh; }
+    .loader {
+      min-height: 100vh; display: grid; place-items: center; padding: 24px;
+      background: radial-gradient(circle at 50% 22%, #25334f 0, #111827 34rem, #070c18 75%);
+    }
+    .loader-card {
+      width: min(520px, 100%); padding: 28px; text-align: center;
+      border: 1px solid rgba(202, 166, 90, .42); border-radius: 6px;
+      background: rgba(12, 18, 31, .92); box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+    }
+    .loader-kicker { margin: 0 0 8px; color: #caa65a; font-size: 12px; letter-spacing: .18em; }
+    .loader-title { margin: 0 0 12px; color: #f0e5cf; font-size: 22px; font-weight: 600; }
+    .loader-status { margin: 0; color: #a89b83; font-size: 14px; line-height: 1.7; }
+    .loader-retry {
+      display: none; margin: 18px auto 0; padding: 9px 20px; cursor: pointer;
+      border: 1px solid #caa65a; border-radius: 3px; background: #725225; color: #fff8e7;
+      font: inherit;
+    }
+    .loader.error .loader-retry { display: inline-block; }
+    .loader-retry:focus-visible { outline: 2px solid #f2d28d; outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main id="mgq-loader" class="loader" aria-live="polite">
+      <section class="loader-card">
+        <p class="loader-kicker">MONSTER GIRL QUEST · ADV</p>
+        <h1 class="loader-title">正在载入勇战界面</h1>
+        <p id="mgq-loader-status" class="loader-status">正在连接前端资源，请稍候。</p>
+        <button id="mgq-loader-retry" class="loader-retry" type="button">重试</button>
+      </section>
+    </main>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+    const SCRIPT_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.js';
+    const STYLE_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css';
+    const INLINE_SCRIPT_B64 = '__MGQ_INLINE_SCRIPT_B64__';
+    const INLINE_STYLE_B64 = '__MGQ_INLINE_STYLE_B64__';
+    const INLINE_BUNDLE_REQUIRED = '__MGQ_INLINE_BUNDLE_REQUIRED__' === 'true';
+    const status = document.getElementById('mgq-loader-status');
+    const loader = document.getElementById('mgq-loader');
+    const retry = document.getElementById('mgq-loader-retry');
+
+    function hasInlineAsset(value, placeholder) {
+      return Boolean(value && value !== placeholder);
+    }
+
+    function decodeInlineAsset(value) {
+      const binary = atob(value);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    function applyStyle() {
+      const link = document.getElementById('mgq-v4-style');
+      if (hasInlineAsset(INLINE_STYLE_B64, '__MGQ_INLINE_STYLE_B64__')) {
+        link?.remove();
+        document.getElementById('mgq-v4-inline-style')?.remove();
+        const style = document.createElement('style');
+        style.id = 'mgq-v4-inline-style';
+        style.textContent = decodeInlineAsset(INLINE_STYLE_B64);
+        document.head.appendChild(style);
+        return;
+      }
+      if (link) link.href = STYLE_URL + '?v=' + Date.now();
+    }
+
+    function appendInlineScript(onload, onerror) {
+      try {
+        document.getElementById('mgq-v4-script')?.remove();
+        const script = document.createElement('script');
+        script.id = 'mgq-v4-script';
+        script.textContent = decodeInlineAsset(INLINE_SCRIPT_B64);
+        document.head.appendChild(script);
+        if (typeof onload === 'function') setTimeout(onload, 0);
+      } catch (error) {
+        if (typeof onerror === 'function') onerror(error);
+        else throw error;
+      }
+    }
+
+    // ── 从 ST 窗口复制 API 到 iframe 的 globalThis ──────────
+    function bootstrapBridge() {
+      try {
+        var st = globalThis.parent;
+        if (!st || st === globalThis) return false;
+        if (typeof st.SillyTavern?.getContext !== 'function') return false;
+
+        // 先复制 SillyTavern 对象（所有子方法一并带上）
+        if (typeof globalThis.SillyTavern === 'undefined') {
+          globalThis.SillyTavern = st.SillyTavern;
+        }
+
+        // 从 SillyTavern 里提取关键方法到全局，方便 SPA 直接调用
+        var stApis = ['createChatMessages', 'setChatMessages', 'generate',
+                      'triggerSlash', 'executeSlashCommand', 'getContext',
+                      'eventOn', 'eventEmit', 'eventRemoveListener'];
+        var stObj = st.SillyTavern;
+        var stContext = typeof stObj.getContext === 'function' ? stObj.getContext() : {};
+        for (var i = 0; i < stApis.length; i++) {
+          var key = stApis[i];
+          if (typeof globalThis[key] !== 'undefined') continue;
+          if (typeof stObj[key] === 'function') {
+            globalThis[key] = stObj[key].bind(stObj);
+          } else if (stContext && typeof stContext[key] === 'function') {
+            globalThis[key] = stContext[key].bind(stContext);
+          }
+        }
+
+        // 其他全局 API（不在 SillyTavern 里的）
+        var globalApis = ['waitGlobalInitialized', 'initializeGlobal',
+                          'tavern_events', 'Mvu'];
+        for (var j = 0; j < globalApis.length; j++) {
+          var gk = globalApis[j];
+          if (typeof st[gk] !== 'undefined' && typeof globalThis[gk] === 'undefined') {
+            globalThis[gk] = st[gk];
+          }
+        }
+
+        return true;
+      } catch(e) {
+        return false;
+      }
+    }
+
+    function showError(msg) {
+      loader.classList.add('error');
+      status.textContent = msg || '载入失败。请检查网络后重试。';
+    }
+
+    function loadSpa() {
+      loader.classList.remove('error');
+
+      // 先桥接 ST API
+      if (!bootstrapBridge()) {
+        status.textContent = '正在等待酒馆运行时就绪……';
+        // 重试
+        var attempts = 0;
+        var timer = setInterval(function() {
+          attempts++;
+          if (bootstrapBridge()) {
+            clearInterval(timer);
+            status.textContent = '正在加载勇战游戏界面……';
+            injectScript();
+          } else if (attempts >= 50) {
+            clearInterval(timer);
+            showError('无法连接到酒馆运行时。请确认酒馆助手扩展已启用。');
+          }
+        }, 200);
+        return;
+      }
+
+      status.textContent = '正在加载勇战游戏界面……';
+      injectScript();
+    }
+
+    function injectScript() {
+      applyStyle();
+      if (INLINE_BUNDLE_REQUIRED || hasInlineAsset(INLINE_SCRIPT_B64, '__MGQ_INLINE_SCRIPT_B64__')) {
+        appendInlineScript(null, function() { showError('Inline frontend bundle failed to execute.'); });
+        return;
+      }
+      document.getElementById('mgq-v4-script')?.remove();
+      var script = document.createElement('script');
+      script.id = 'mgq-v4-script';
+      script.src = SCRIPT_URL + '?v=' + Date.now();
+      script.async = true;
+      script.onerror = function() { showError('前端资源载入失败。请检查网络或 GitHub Pages 状态。'); };
+      document.head.appendChild(script);
+    }
+
+    retry.addEventListener('click', loadSpa);
+    loadSpa();
+  })();
+  </script>
+</body>
+</html>
