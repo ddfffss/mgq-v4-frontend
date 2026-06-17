@@ -60,6 +60,7 @@
     const BRIDGE_APIS = [
       'getCurrentMessageId',
       'getChatMessages',
+      'getLastMessageId',
       'createChatMessages',
       'setChatMessages',
       'generate',
@@ -275,11 +276,6 @@
       if (Array.isArray(player.items)) {
         profile['物品'] = player.items.map(itemLabel).filter(Boolean);
       }
-    }
-
-    function latestAssistantMessageId() {
-      const chat = globalThis.SillyTavern?.getContext?.()?.chat || [];
-      return findLatestAssistantMessageId(chat);
     }
 
     function requireLatestMessage(messageId) {
@@ -502,6 +498,41 @@
       return getRecordMessageId(latest?.record, latest?.index);
     }
 
+    function getHelperLatestAssistantMessageId() {
+      if (typeof globalThis.getLastMessageId !== 'function') return undefined;
+      try {
+        const value = globalThis.getLastMessageId({
+          filter: (message) => message && !message.is_user && !message.is_system,
+        });
+        const numeric = Number(value);
+        if (Number.isInteger(numeric) && numeric >= 0) return numeric;
+      } catch {}
+      return undefined;
+    }
+
+    function getDomLatestAssistantMessageId() {
+      try {
+        const doc = globalThis.parent?.document;
+        const nodes = Array.from(doc?.querySelectorAll?.('#chat > .mes') || []);
+        for (let index = nodes.length - 1; index >= 0; index--) {
+          const node = nodes[index];
+          const isUser = node.getAttribute('is_user') === 'true' || node.classList.contains('user_mes');
+          const isSystem = node.getAttribute('is_system') === 'true';
+          const value = Number(node.getAttribute('mesid'));
+          if (!isUser && !isSystem && Number.isInteger(value) && value >= 0) return value;
+        }
+      } catch {}
+      return undefined;
+    }
+
+    function latestAssistantMessageId() {
+      const fromContext = findLatestAssistantMessageId(getContextChat());
+      if (Number.isInteger(Number(fromContext)) && Number(fromContext) >= 0) return Number(fromContext);
+      const fromHelper = getHelperLatestAssistantMessageId();
+      if (fromHelper !== undefined) return fromHelper;
+      return getDomLatestAssistantMessageId();
+    }
+
     function getContextChat() {
       return globalThis.SillyTavern?.getContext?.()?.chat || [];
     }
@@ -548,11 +579,8 @@
         throw new Error('Current message source is empty.');
       }
 
-      const chat = getContextChat();
-      const latestMessage = findLatestAssistantMessageEntry(chat);
-      const isLatest = Boolean(
-        latestMessage && recordMessageIdMatches(latestMessage.record, latestMessage.index, messageId),
-      );
+      const latestId = latestAssistantMessageId();
+      const isLatest = Number(latestId) === Number(messageId);
       globalThis.__MGQ_MESSAGE_CONTEXT__ = Object.freeze({
         kind: 'message',
         messageId,

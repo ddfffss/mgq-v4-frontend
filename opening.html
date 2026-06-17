@@ -152,6 +152,7 @@
 
         // 从 SillyTavern 里提取关键方法到全局，方便 SPA 直接调用
         var stApis = ['createChatMessages', 'setChatMessages', 'generate',
+                      'getLastMessageId',
                       'triggerSlash', 'executeSlashCommand', 'getContext',
                       'eventOn', 'eventEmit', 'eventRemoveListener'];
         var stObj = st.SillyTavern;
