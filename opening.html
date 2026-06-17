@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>勇战 ADV</title>
-  <link id="mgq-v4-style" rel="stylesheet" href="https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css">
+  <link id="mgq-v4-style" rel="stylesheet" href="https://testingcf.jsdelivr.net/gh/ddfffss/mgq-v4-frontend@main/mgq-v4.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     html, body { min-height: 100%; margin: 0; background: #070c18; color: #ded2b8; }
@@ -46,8 +46,12 @@
   <script>
   (() => {
     'use strict';
-    const SCRIPT_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.js';
-    const STYLE_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css';
+    const RESOURCE_BASES = [
+      'https://testingcf.jsdelivr.net/gh/ddfffss/mgq-v4-frontend@main/',
+      'https://ddfffss.github.io/mgq-v4-frontend/',
+    ];
+    const SCRIPT_URLS = RESOURCE_BASES.map((base) => base + 'mgq-v4.js');
+    const STYLE_URLS = RESOURCE_BASES.map((base) => base + 'mgq-v4.css');
     const INLINE_SCRIPT_B64 = '__MGQ_INLINE_SCRIPT_B64__';
     const INLINE_STYLE_B64 = '__MGQ_INLINE_STYLE_B64__';
     const INLINE_BUNDLE_REQUIRED = '__MGQ_INLINE_BUNDLE_REQUIRED__' === 'true';
@@ -66,8 +70,12 @@
       return new TextDecoder('utf-8').decode(bytes);
     }
 
+    function cacheBust(url) {
+      return url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
+    }
+
     function applyStyle() {
-      const link = document.getElementById('mgq-v4-style');
+      let link = document.getElementById('mgq-v4-style');
       if (hasInlineAsset(INLINE_STYLE_B64, '__MGQ_INLINE_STYLE_B64__')) {
         link?.remove();
         document.getElementById('mgq-v4-inline-style')?.remove();
@@ -77,7 +85,22 @@
         document.head.appendChild(style);
         return;
       }
-      if (link) link.href = STYLE_URL + '?v=' + Date.now();
+      if (!link) {
+        link = document.createElement('link');
+        link.id = 'mgq-v4-style';
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+      }
+      let index = 0;
+      const tryNext = () => {
+        if (index >= STYLE_URLS.length) {
+          showError('Frontend stylesheet failed to load.');
+          return;
+        }
+        link.href = cacheBust(STYLE_URLS[index++]);
+      };
+      link.onerror = tryNext;
+      tryNext();
     }
 
     function appendInlineScript(onload, onerror) {
@@ -92,6 +115,26 @@
         if (typeof onerror === 'function') onerror(error);
         else throw error;
       }
+    }
+
+    function appendRemoteScript(onload, onerror) {
+      let index = 0;
+      const tryNext = () => {
+        document.getElementById('mgq-v4-script')?.remove();
+        if (index >= SCRIPT_URLS.length) {
+          const error = new Error('Frontend script failed to load.');
+          if (typeof onerror === 'function') onerror(error);
+          return;
+        }
+        const script = document.createElement('script');
+        script.id = 'mgq-v4-script';
+        script.src = cacheBust(SCRIPT_URLS[index++]);
+        script.async = true;
+        script.onload = onload;
+        script.onerror = tryNext;
+        document.head.appendChild(script);
+      };
+      tryNext();
     }
 
     // ── 从 ST 窗口复制 API 到 iframe 的 globalThis ──────────
@@ -175,13 +218,9 @@
         appendInlineScript(null, function() { showError('Inline frontend bundle failed to execute.'); });
         return;
       }
-      document.getElementById('mgq-v4-script')?.remove();
-      var script = document.createElement('script');
-      script.id = 'mgq-v4-script';
-      script.src = SCRIPT_URL + '?v=' + Date.now();
-      script.async = true;
-      script.onerror = function() { showError('前端资源载入失败。请检查网络或 GitHub Pages 状态。'); };
-      document.head.appendChild(script);
+      appendRemoteScript(null, function() {
+        showError('前端资源载入失败。请检查网络或 GitHub/jsDelivr 状态。');
+      });
     }
 
     retry.addEventListener('click', loadSpa);

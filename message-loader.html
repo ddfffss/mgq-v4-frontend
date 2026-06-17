@@ -46,8 +46,12 @@
   (() => {
     'use strict';
 
-    const SCRIPT_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.js';
-    const STYLE_URL = 'https://ddfffss.github.io/mgq-v4-frontend/mgq-v4.css';
+    const RESOURCE_BASES = [
+      'https://testingcf.jsdelivr.net/gh/ddfffss/mgq-v4-frontend@main/',
+      'https://ddfffss.github.io/mgq-v4-frontend/',
+    ];
+    const SCRIPT_URLS = RESOURCE_BASES.map((base) => base + 'mgq-v4.js');
+    const STYLE_URLS = RESOURCE_BASES.map((base) => base + 'mgq-v4.css');
     const MVU_BUNDLE_URL = 'https://testingcf.jsdelivr.net/gh/MagicalAstrogy/MagVarUpdate@beta/artifact/bundle.js';
     const INLINE_SCRIPT_B64 = '__MGQ_INLINE_SCRIPT_B64__';
     const INLINE_STYLE_B64 = '__MGQ_INLINE_STYLE_B64__';
@@ -85,6 +89,10 @@
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
       return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    function cacheBust(url) {
+      return url + (url.includes('?') ? '&' : '?') + 'v=' + Date.now();
     }
 
     function appendInlineScript(onload, onerror) {
@@ -564,9 +572,17 @@
       const link = document.createElement('link');
       link.id = 'mgq-v4-style';
       link.rel = 'stylesheet';
-      link.href = STYLE_URL;
-      link.onerror = () => showError('Failed to load mgq-v4.css.', fallbackText);
       document.head.appendChild(link);
+      let index = 0;
+      const tryNext = () => {
+        if (index >= STYLE_URLS.length) {
+          showError('Failed to load mgq-v4.css.', fallbackText);
+          return;
+        }
+        link.href = cacheBust(STYLE_URLS[index++]);
+      };
+      link.onerror = tryNext;
+      tryNext();
     }
 
     function loadScript() {
@@ -574,14 +590,22 @@
         return new Promise((resolve, reject) => appendInlineScript(resolve, reject));
       }
       return new Promise((resolve, reject) => {
-        document.getElementById('mgq-v4-script')?.remove();
-        const script = document.createElement('script');
-        script.id = 'mgq-v4-script';
-        script.src = SCRIPT_URL;
-        script.async = true;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error('Failed to load mgq-v4.js.'));
-        document.head.appendChild(script);
+        let index = 0;
+        const tryNext = () => {
+          document.getElementById('mgq-v4-script')?.remove();
+          if (index >= SCRIPT_URLS.length) {
+            reject(new Error('Failed to load mgq-v4.js.'));
+            return;
+          }
+          const script = document.createElement('script');
+          script.id = 'mgq-v4-script';
+          script.src = cacheBust(SCRIPT_URLS[index++]);
+          script.async = true;
+          script.onload = resolve;
+          script.onerror = tryNext;
+          document.head.appendChild(script);
+        };
+        tryNext();
       });
     }
 
