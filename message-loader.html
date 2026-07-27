@@ -470,6 +470,7 @@
       const ids = [];
       const candidates = [record?.mesid, record?.id, fallbackIndex, record?.message_id];
       for (const value of candidates) {
+        if (value === null || value === undefined || value === '') continue;
         const numeric = Number(value);
         if (Number.isInteger(numeric) && numeric >= 0 && !ids.includes(numeric)) ids.push(numeric);
       }
@@ -484,11 +485,70 @@
       return getRecordMessageIds(record, fallbackIndex).includes(Number(messageId));
     }
 
+    function messageIdentityIntersects(left, right) {
+      const rightIds = new Set(Array.isArray(right) ? right : []);
+      return (Array.isArray(left) ? left : []).some((id) => rightIds.has(id));
+    }
+
+    function createPresentationSignature(rawText) {
+      const text = String(rawText || '');
+      const matches = text.match(/<MGQ_MESSAGE\b[^>]*>[\s\S]*?<\/MGQ_MESSAGE>/gi);
+      let visibleSource = matches?.length ? matches[matches.length - 1] : text
+        .replace(/<(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)\b[^>]*>[\s\S]*?<\/(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)>/gi, '')
+        .replace(/<StatusPlaceHolderImpl\s*\/?>/gi, '')
+        .trim();
+      if (!matches?.length) {
+        try {
+          const parsed = JSON.parse(visibleSource);
+          if (isRecord(parsed) && Object.prototype.hasOwnProperty.call(parsed, '_mgq_runtime')) {
+            const visibleRecord = { ...parsed };
+            delete visibleRecord._mgq_runtime;
+            visibleSource = JSON.stringify(visibleRecord);
+          }
+        } catch (_) {}
+      }
+      const visible = visibleSource
+        .replace(/\r\n?/g, '\n')
+        .replace(/[ \t]+\n/g, '\n')
+        .trim();
+      let hash = 0x811c9dc5;
+      for (let index = 0; index < visible.length; index++) {
+        hash ^= visible.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+      }
+      return `v1:${hash.toString(16).padStart(8, '0')}:${visible.length}`;
+    }
+
+    function currentChatId() {
+      const context = globalThis.SillyTavern?.getContext?.() || {};
+      const firstIdentity = (values) => {
+        for (const value of values) {
+          if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+        }
+        return '';
+      };
+      const chatId = firstIdentity([
+        context.chatId,
+        context.chat_id,
+        context.selectedChat,
+        context.selected_chat,
+      ]);
+      const characterId = firstIdentity([
+        context.characterId,
+        context.character_id,
+        context.this_chid,
+      ]);
+      if (chatId && characterId) return `${characterId}::${chatId}`;
+      return chatId || characterId || 'unknown-chat';
+    }
+
     function findLatestAssistantMessageEntry(chat) {
       if (!Array.isArray(chat)) return undefined;
       for (let index = chat.length - 1; index >= 0; index--) {
         const record = chat[index];
-        if (!record?.is_user) return { record, index };
+        const isUser = record?.is_user === true || record?.role === 'user';
+        const isSystem = record?.is_system === true || record?.role === 'system';
+        if (record && !isUser && !isSystem) return { record, index };
       }
       return undefined;
     }
@@ -537,11 +597,29 @@
       return globalThis.SillyTavern?.getContext?.()?.chat || [];
     }
 
-    function getContextChatRecord(messageId) {
+    function getContextChatEntry(messageId) {
       const chat = getContextChat();
       if (!Array.isArray(chat)) return undefined;
-      return chat.find((item, index) => recordMessageIdMatches(item, index, messageId))
-        || chat[messageId];
+      const target = Number(messageId);
+      for (const field of ['mesid', 'id']) {
+        const index = chat.findIndex((item) => {
+          const value = item?.[field];
+          return value !== null && value !== undefined && value !== '' && Number(value) === target;
+        });
+        if (index >= 0) return { record: chat[index], index };
+      }
+      if (Number.isInteger(target) && target >= 0 && chat[target]) {
+        return { record: chat[target], index: target };
+      }
+      const legacyIndex = chat.findIndex((item) => {
+        const value = item?.message_id;
+        return value !== null && value !== undefined && value !== '' && Number(value) === target;
+      });
+      return legacyIndex >= 0 ? { record: chat[legacyIndex], index: legacyIndex } : undefined;
+    }
+
+    function getContextChatRecord(messageId) {
+      return getContextChatEntry(messageId)?.record;
     }
 
     async function getHelperChatRecord(messageId) {
@@ -569,7 +647,8 @@
         throw new Error('Current message id is not numeric.');
       }
 
-      const contextRecord = getContextChatRecord(messageId);
+      const contextEntry = getContextChatEntry(messageId);
+      const contextRecord = contextEntry?.record;
       const helperRecord = resolveRawMessageText(contextRecord, undefined)
         ? undefined
         : await getHelperChatRecord(messageId);
@@ -579,11 +658,20 @@
         throw new Error('Current message source is empty.');
       }
 
+      const floorIndex = Number.isInteger(contextEntry?.index) ? contextEntry.index : messageId;
+      const idCandidates = getRecordMessageIds(contextRecord || helperRecord, floorIndex);
+      const latestEntry = findLatestAssistantMessageEntry(getContextChat());
+      const latestCandidates = getRecordMessageIds(latestEntry?.record, latestEntry?.index);
       const latestId = latestAssistantMessageId();
-      const isLatest = Number(latestId) === Number(messageId);
+      const isLatest = messageIdentityIntersects(idCandidates, latestCandidates)
+        || idCandidates.includes(Number(latestId));
       globalThis.__MGQ_MESSAGE_CONTEXT__ = Object.freeze({
         kind: 'message',
         messageId,
+        chatId: currentChatId(),
+        floorIndex,
+        idCandidates,
+        presentationSignature: createPresentationSignature(fallbackText),
         rawText: fallbackText,
         isLatest,
       });
