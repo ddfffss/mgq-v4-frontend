@@ -1,0 +1,2749 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MGQ 历史楼层</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root { color-scheme: dark; }
+    html, body { margin: 0; width: 100%; background: transparent; color: #e4d7bd; }
+    body {
+      padding: 8px 6px;
+      font-family: "Noto Serif SC", "Source Han Serif SC", SimSun, serif;
+      line-height: 1.72;
+    }
+    .history-floor {
+      width: 100%;
+      border: 1px solid rgba(186, 146, 78, .32);
+      border-radius: 4px;
+      background: linear-gradient(145deg, rgba(24, 17, 34, .96), rgba(10, 9, 18, .97));
+      box-shadow: 0 9px 26px rgba(0, 0, 0, .24), inset 0 1px rgba(255, 244, 222, .04);
+    }
+    .history-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      min-height: 42px; padding: 8px 12px; border-bottom: 1px solid rgba(186, 146, 78, .22);
+    }
+    .history-kicker { margin: 0; color: #c7a461; font: 700 11px/1.3 ui-sans-serif, sans-serif; letter-spacing: .14em; }
+    .history-state { color: #9f91a8; font: 600 11px/1.3 ui-sans-serif, sans-serif; }
+    .history-summary { display: flex; flex-wrap: wrap; gap: 6px; padding: 9px 12px 0; }
+    .history-summary:empty { display: none; }
+    .history-chip {
+      padding: 2px 7px; border: 1px solid rgba(188, 151, 83, .24); border-radius: 2px;
+      color: #cfc0a8; background: rgba(109, 55, 91, .16); font: 600 11px/1.55 ui-sans-serif, sans-serif;
+    }
+    .history-copy { position: relative; padding: 10px 12px 4px; }
+    .history-excerpt, .history-raw { margin: 0; color: #e5d9c5; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .history-excerpt { max-height: 8.6em; overflow: hidden; }
+    .history-floor.is-expanded .history-excerpt { display: none; }
+    .history-raw { display: none; }
+    .history-floor.is-expanded .history-raw { display: block; }
+    .history-thumbnail { display: none; margin: 7px 12px 0; }
+    .history-thumbnail.is-visible { display: block; }
+    .history-thumbnail img { display: block; width: min(220px, 52vw); max-height: 132px; object-fit: cover; border: 1px solid rgba(186, 146, 78, .28); }
+    .history-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 12px 12px; }
+    .history-action {
+      min-width: 44px; min-height: 44px; padding: 7px 12px; cursor: pointer;
+      border: 1px solid rgba(197, 158, 87, .42); border-radius: 3px;
+      background: rgba(46, 27, 55, .76); color: #eadfc9; font: 650 12px/1.3 ui-sans-serif, sans-serif;
+    }
+    .history-action.primary { margin-left: auto; border-color: rgba(226, 184, 94, .7); background: #5d294f; color: #fff3df; }
+    .history-action:hover, .history-action:focus-visible { border-color: #e0b968; outline: 2px solid transparent; background: #71345f; }
+    .history-action:disabled { cursor: wait; opacity: .58; }
+    .history-note { display: none; margin: 0 12px 12px; color: #d7989a; font: 12px/1.6 ui-sans-serif, sans-serif; }
+    .history-note.is-visible { display: block; }
+    @media (max-width: 420px) {
+      body { padding-inline: 3px; }
+      .history-actions { display: grid; grid-template-columns: 1fr 1fr; }
+      .history-action.primary { grid-column: 1 / -1; margin-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <article class="history-floor" data-mgq-history-floor aria-label="MGQ 历史消息">
+    <header class="history-head">
+      <p id="history-kicker" class="history-kicker">MGQ · FLOOR</p>
+      <span id="history-state" class="history-state">读取中</span>
+    </header>
+    <div id="history-summary" class="history-summary" aria-label="本楼状态摘要"></div>
+    <div class="history-copy">
+      <p id="history-excerpt" class="history-excerpt"></p>
+      <p id="history-raw" class="history-raw"></p>
+    </div>
+    <figure id="history-thumbnail" class="history-thumbnail">
+      <img id="history-image" alt="本楼场景缩略图" loading="lazy">
+    </figure>
+    <div class="history-actions">
+      <button id="history-expand" class="history-action" type="button">展开原文</button>
+      <button id="history-inspect" class="history-action" type="button">查看本楼快照</button>
+      <button id="history-continue" class="history-action primary" type="button">继续游戏</button>
+    </div>
+    <p id="history-note" class="history-note" role="status"></p>
+  </article>
+
+  <script>
+  (() => {
+    'use strict';
+
+    const IMMERSIVE_PROTOCOL = 'mgq-immersive/v1';
+    const PRESENTATION_PROTOCOL = 'mgq-message-presentation/v2';
+    const STATUS_PROTOCOL = 'mgq-status-snapshot/v2';
+    const PUBLIC_STATE_PROTOCOL = 'mgq-public-state/v2';
+    const MANIFEST_PROTOCOL = 'mgq-release-manifest/v1';
+    const BGM_MANIFEST_PROTOCOL = 'mgq-bgm-manifest/v1';
+    const HOST_IMPLEMENTATION_REVISION = 'mgq-immersive-host/2.1.0-r7';
+    const HOST_KEY = '__MGQ_IMMERSIVE_HOST_V1__';
+    const HOST_READY_EVENT = '__MGQ_IMMERSIVE_HOST_READY__';
+    const MANIFEST_URLS = [
+      'https://ddfffss.github.io/mgq-v4-frontend/release-manifest.json',
+      'https://cdn.jsdelivr.net/gh/ddfffss/mgq-v4-frontend@main/release-manifest.json',
+      'https://testingcf.jsdelivr.net/gh/ddfffss/mgq-v4-frontend@main/release-manifest.json',
+      'https://raw.githubusercontent.com/ddfffss/mgq-v4-frontend/main/release-manifest.json',
+    ];
+    const CARD_RELEASE_LOCK = globalThis.__MGQ_CARD_RELEASE_LOCK__
+      && typeof globalThis.__MGQ_CARD_RELEASE_LOCK__ === 'object'
+      && !Array.isArray(globalThis.__MGQ_CARD_RELEASE_LOCK__)
+      ? globalThis.__MGQ_CARD_RELEASE_LOCK__
+      : null;
+    const floor = document.querySelector('[data-mgq-history-floor]');
+    const kicker = document.getElementById('history-kicker');
+    const state = document.getElementById('history-state');
+    const summary = document.getElementById('history-summary');
+    const excerpt = document.getElementById('history-excerpt');
+    const raw = document.getElementById('history-raw');
+    const thumbnail = document.getElementById('history-thumbnail');
+    const image = document.getElementById('history-image');
+    const expand = document.getElementById('history-expand');
+    const inspect = document.getElementById('history-inspect');
+    const continueButton = document.getElementById('history-continue');
+    const note = document.getElementById('history-note');
+    let messageContext = null;
+
+    function parentWindow() {
+      try {
+        if (globalThis.parent && globalThis.parent !== globalThis && globalThis.parent.document) {
+          void globalThis.parent.document.documentElement;
+          return globalThis.parent;
+        }
+      } catch (_) {}
+      return null;
+    }
+
+    function getStContext() {
+      const owner = parentWindow() || globalThis;
+      const st = owner.SillyTavern || globalThis.SillyTavern;
+      try { return typeof st?.getContext === 'function' ? st.getContext.call(st) || {} : {}; } catch (_) { return {}; }
+    }
+
+    function getContextChat() {
+      const chat = getStContext().chat;
+      return Array.isArray(chat) ? chat : [];
+    }
+
+    function firstIdentity(values) {
+      for (const value of values) {
+        if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+      }
+      return '';
+    }
+
+    function currentChatId() {
+      const context = getStContext();
+      const chatId = firstIdentity([context.chatId, context.chat_id, context.selectedChat, context.selected_chat]);
+      const characterId = firstIdentity([context.characterId, context.character_id, context.this_chid]);
+      return chatId && characterId ? characterId + '::' + chatId : chatId || characterId || 'unknown-chat';
+    }
+
+    function getRecordMessageIds(record, fallbackIndex) {
+      const ids = [];
+      for (const candidate of [record?.mesid, record?.id, fallbackIndex, record?.message_id]) {
+        if (candidate === null || candidate === undefined || candidate === '') continue;
+        const value = Number(candidate);
+        if (Number.isInteger(value) && value >= 0 && !ids.includes(value)) ids.push(value);
+      }
+      return ids;
+    }
+
+    function getContextChatEntry(messageId) {
+      const chat = getContextChat();
+      const target = Number(messageId);
+      for (const field of ['mesid', 'id']) {
+        const index = chat.findIndex((item) => {
+          const value = item?.[field];
+          return value !== null && value !== undefined && value !== '' && Number(value) === target;
+        });
+        if (index >= 0) return { record: chat[index], index };
+      }
+      if (Number.isInteger(target) && target >= 0 && chat[target]) return { record: chat[target], index: target };
+      const legacyIndex = chat.findIndex((item) => {
+        const value = item?.message_id;
+        return value !== null && value !== undefined && value !== '' && Number(value) === target;
+      });
+      return legacyIndex >= 0 ? { record: chat[legacyIndex], index: legacyIndex } : undefined;
+    }
+
+    function createPresentationSignature(text) {
+      const visible = normalizePresentationSource(String(text || ''));
+      let hash = 0x811c9dc5;
+      for (let index = 0; index < visible.length; index += 1) {
+        hash ^= visible.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+      }
+      return 'v1:' + hash.toString(16).padStart(8, '0') + ':' + visible.length;
+    }
+
+    function normalizePresentationSource(rawText) {
+      const envelopeMatches = rawText.match(/<MGQ_MESSAGE\b[^>]*>[\s\S]*?<\/MGQ_MESSAGE>/gi);
+      if (envelopeMatches?.length) {
+        return normalizePresentationWhitespace(envelopeMatches[envelopeMatches.length - 1] || '');
+      }
+      const withoutRuntimeSidecars = rawText
+        .replace(/<(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)\b[^>]*>[\s\S]*?<\/(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)>/gi, '')
+        .replace(/<StatusPlaceHolderImpl\s*\/?>/gi, '')
+        .trim();
+      try {
+        const parsed = JSON.parse(withoutRuntimeSidecars);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+          && Object.prototype.hasOwnProperty.call(parsed, '_mgq_runtime')) {
+          const visible = { ...parsed };
+          delete visible._mgq_runtime;
+          return normalizePresentationWhitespace(JSON.stringify(visible));
+        }
+      } catch (_) {}
+      return normalizePresentationWhitespace(withoutRuntimeSidecars);
+    }
+
+    function normalizePresentationWhitespace(value) {
+      return String(value || '').replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
+    }
+
+    async function buildMessageContext() {
+      const ownIdReader = globalThis.getCurrentMessageId;
+      const parentIdReader = parentWindow()?.getCurrentMessageId;
+      const reader = typeof ownIdReader === 'function' ? ownIdReader : parentIdReader;
+      if (typeof reader !== 'function') throw new Error('当前楼层 ID 不可用');
+      const messageId = Number(reader());
+      if (!Number.isInteger(messageId) || messageId < 0) throw new Error('当前楼层 ID 无效');
+      const entry = getContextChatEntry(messageId);
+      let record = entry?.record;
+      if (!record) {
+        const helper = globalThis.getChatMessages || parentWindow()?.getChatMessages;
+        if (typeof helper === 'function') {
+          const value = await Promise.resolve(helper(messageId));
+          record = Array.isArray(value) ? value[0] : value;
+        }
+      }
+      const rawText = String(record?.mes ?? record?.message ?? '');
+      const floorIndex = Number.isInteger(entry?.index) ? entry.index : messageId;
+      return Object.freeze({
+        kind: 'message',
+        messageId,
+        chatId: currentChatId(),
+        floorIndex,
+        idCandidates: getRecordMessageIds(record, floorIndex),
+        presentationSignature: createPresentationSignature(rawText),
+        rawText,
+        isLatest: isLatestAssistantFloor(floorIndex),
+      });
+    }
+
+    function isLatestAssistantFloor(floorIndex) {
+      const chat = getContextChat();
+      for (let index = chat.length - 1; index >= 0; index -= 1) {
+        const item = chat[index];
+        if (item && item.is_user !== true && item.is_system !== true && item.role !== 'user' && item.role !== 'system') {
+          return index === floorIndex;
+        }
+      }
+      return false;
+    }
+
+    const JSON_ALPHA_STORY_KEYS = new Set([
+      '叙事推进', '情节推进', '场景描写', '动作描写', '心理描写', '内心独白',
+      '对话推进', '对话', '独白', '场景转换', '结尾钩子', '正文', '正文内容',
+      '文本', 'maintext', 'content', 'body', 'narrative',
+    ]);
+
+    function parseJsonObjectText(text) {
+      let source = String(text || '')
+        .replace(/^\s*```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/i, '')
+        .replace(/<StatusPlaceHolderImpl\s*\/?>/gi, '')
+        .trim();
+      if (source.startsWith('<![CDATA[') && source.endsWith(']]>')) source = source.slice(9, -3).trim();
+      const start = source.indexOf('{');
+      const end = source.lastIndexOf('}');
+      if (start < 0 || end <= start) return null;
+      try {
+        const value = JSON.parse(source.slice(start, end + 1));
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function parseDsv4Payload(text) {
+      const value = parseJsonObjectText(text);
+      if (!value) return null;
+      const writing = value.writing;
+      return value.format === 'mgq_v4_message'
+        || (writing && typeof writing === 'object' && !Array.isArray(writing))
+        ? value
+        : null;
+    }
+
+    function cleanHistoryText(text) {
+      return String(text || '')
+        .replace(/<status_data\b[^>]*>[\s\S]*?<\/status_data>/gi, '')
+        .replace(/<UpdateVariable\b[^>]*>[\s\S]*?<\/UpdateVariable>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+        .replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function collectAlphaStory(value, fields) {
+      if (typeof value === 'string') {
+        if (value.trim()) fields.push(value.trim());
+        return;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) collectAlphaStory(item, fields);
+        return;
+      }
+      if (!value || typeof value !== 'object') return;
+      for (const [key, item] of Object.entries(value)) {
+        if (JSON_ALPHA_STORY_KEYS.has(key)) collectAlphaStory(item, fields);
+      }
+    }
+
+    function visibleStory(text) {
+      const source = String(text || '');
+      const dsv4 = parseDsv4Payload(source);
+      if (dsv4) {
+        const writing = dsv4.writing && typeof dsv4.writing === 'object' && !Array.isArray(dsv4.writing)
+          ? dsv4.writing
+          : {};
+        const maintext = typeof writing.maintext === 'string' ? writing.maintext.trim() : '';
+        const fields = [];
+        if (maintext) fields.push(maintext);
+        else collectAlphaStory(writing.alpha_content, fields);
+        return cleanHistoryText(fields.join('\n'));
+      }
+
+      const fields = [];
+      for (const tag of ['maintext', 'text', 'narration']) {
+        const match = source.match(new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i'));
+        if (match?.[1]) fields.push(match[1]);
+      }
+      const dialogue = [...source.matchAll(/<line\b[^>]*>([\s\S]*?)<\/line>/gi)].map(match => match[1]);
+      fields.push(...dialogue);
+      return cleanHistoryText(fields.join('\n').trim() || source);
+    }
+
+    function statusValueText(value, actor = false) {
+      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+      const keys = actor
+        ? ['name', 'display_name', 'displayName', 'actor_name', '角色名']
+        : ['title', 'name', 'label', 'text', 'objective', 'description', '目标'];
+      for (const key of keys) {
+        const candidate = value[key];
+        if (typeof candidate === 'string' || typeof candidate === 'number') {
+          const text = String(candidate).trim();
+          if (text) return text;
+        }
+      }
+      return '';
+    }
+
+    function summarizeStatusObject(status) {
+      if (!status || typeof status !== 'object' || Array.isArray(status)) return [];
+      const values = [];
+      for (const keys of [['time', '时间'], ['location', '地点'], ['chapter', '章节']]) {
+        const value = keys.map(key => status[key]).find(item => item !== null && item !== undefined);
+        const text = statusValueText(value);
+        if (text) values.push(text);
+      }
+      const objectives = status.objectives ?? status.objective ?? status['目标'];
+      for (const item of Array.isArray(objectives) ? objectives : [objectives]) {
+        const text = statusValueText(item);
+        if (text) values.push(text);
+      }
+      const actors = status.actors ?? status['角色'];
+      for (const item of Array.isArray(actors) ? actors : [actors]) {
+        const text = statusValueText(item, true);
+        if (text) values.push(text);
+      }
+      return [...new Set(values.filter(Boolean))].slice(0, 6);
+    }
+
+    function statusSummary(text) {
+      const source = String(text || '');
+      const dsv4 = parseDsv4Payload(source);
+      if (dsv4?.status_data && typeof dsv4.status_data === 'object') {
+        return summarizeStatusObject(dsv4.status_data);
+      }
+
+      const block = source.match(/<status_data\b[^>]*>([\s\S]*?)<\/status_data>/i)?.[1] || '';
+      const jsonStatus = parseJsonObjectText(block);
+      if (jsonStatus) return summarizeStatusObject(jsonStatus);
+
+      const values = [];
+      for (const tag of ['time', 'location', 'chapter', 'objective']) {
+        const value = block.match(new RegExp('<' + tag + '\\b[^>]*>([\\s\\S]*?)<\\/' + tag + '>', 'i'))?.[1];
+        if (value) values.push(value.replace(/<[^>]+>/g, ' ').trim());
+      }
+      for (const match of block.matchAll(/<actor\b[^>]*(?:name|display_name)=["']([^"']+)["'][^>]*>/gi)) values.push(match[1]);
+      return [...new Set(values.filter(Boolean))].slice(0, 6);
+    }
+
+    function thumbnailUrl(text) {
+      const value = String(text || '').match(/https?:\/\/[^\s"'<>]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s"'<>]*)?/i)?.[0];
+      return value || '';
+    }
+
+    function renderHistory(context) {
+      kicker.textContent = 'MGQ · FLOOR ' + context.floorIndex;
+      state.textContent = context.isLatest ? '当前楼层' : '历史只读';
+      const story = visibleStory(context.rawText) || '本楼正文为空。';
+      excerpt.textContent = story;
+      // The expanded history surface is still a display-only snapshot. Never
+      // expose controller sidecars or raw status/update payloads here.
+      raw.textContent = story;
+      summary.replaceChildren(...statusSummary(context.rawText).map(value => {
+        const chip = document.createElement('span');
+        chip.className = 'history-chip';
+        chip.textContent = value;
+        return chip;
+      }));
+      const url = thumbnailUrl(context.rawText);
+      if (url) {
+        image.src = url;
+        thumbnail.classList.add('is-visible');
+      }
+      announceHeight();
+    }
+
+    function showNote(message) {
+      note.textContent = String(message || '');
+      note.classList.toggle('is-visible', Boolean(message));
+      announceHeight();
+    }
+
+    function announceHeight() {
+      const height = Math.max(1, Math.ceil(document.documentElement.getBoundingClientRect().height));
+      try {
+        const frame = globalThis.frameElement;
+        if (frame?.style) frame.style.height = height + 'px';
+      } catch (_) {}
+      try {
+        globalThis.parent?.postMessage({
+          type: 'MGQ_HISTORY_HEIGHT',
+          messageId: messageContext?.messageId ?? null,
+          height,
+        }, '*');
+      } catch (_) {}
+    }
+
+    async function ensureParentHost() {
+      const owner = parentWindow();
+      if (!owner) throw new Error('当前 TT 不允许访问父页面，已进入历史只读兼容模式。');
+      const existing = owner[HOST_KEY];
+      if (existing?.protocol === IMMERSIVE_PROTOCOL
+        && existing?.implementationRevision === HOST_IMPLEMENTATION_REVISION
+        && typeof existing.enter === 'function') return existing;
+      if (existing && typeof existing.destroy === 'function') await existing.destroy('version-replaced');
+
+      const requestId = 'mgq-host-install-' + Math.random().toString(36).slice(2);
+      const target = owner.document.head || owner.document.body || owner.document.documentElement;
+      if (!target) throw new Error('父页面尚未就绪');
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const timeout = owner.setTimeout(() => finish(false, '安装沉浸宿主超时'), 8000);
+        const onReady = event => {
+          if (event?.detail?.requestId !== requestId) return;
+          finish(Boolean(event.detail.ok), event.detail.error);
+        };
+        const finish = (ok, error) => {
+          if (settled) return;
+          settled = true;
+          owner.clearTimeout(timeout);
+          owner.removeEventListener(HOST_READY_EVENT, onReady);
+          script.remove();
+          ok ? resolve() : reject(new Error(error || '沉浸宿主安装失败'));
+        };
+        owner.addEventListener(HOST_READY_EVENT, onReady);
+        const script = owner.document.createElement('script');
+        script.textContent = '(' + parentHostInstaller.toString() + ')(' + JSON.stringify({
+          requestId,
+          hostKey: HOST_KEY,
+          readyEvent: HOST_READY_EVENT,
+          immersiveProtocol: IMMERSIVE_PROTOCOL,
+          presentationProtocol: PRESENTATION_PROTOCOL,
+          statusProtocol: STATUS_PROTOCOL,
+          publicStateProtocol: PUBLIC_STATE_PROTOCOL,
+          manifestProtocol: MANIFEST_PROTOCOL,
+          bgmProtocol: BGM_MANIFEST_PROTOCOL,
+          implementationRevision: HOST_IMPLEMENTATION_REVISION,
+          manifestUrls: MANIFEST_URLS,
+          cardReleaseLock: CARD_RELEASE_LOCK,
+        }) + ');';
+        target.appendChild(script);
+      });
+      const installed = owner[HOST_KEY];
+      if (installed?.protocol !== IMMERSIVE_PROTOCOL) throw new Error('沉浸宿主协议不匹配');
+      return installed;
+    }
+
+    async function prewarmPersistentHost(context) {
+      if (!context?.isLatest) return;
+      try {
+        const host = await ensureParentHost();
+        await host.ensureHost(context.chatId);
+      } catch (error) {
+        // History remains readable when the parent is not same-origin or the
+        // immutable release is unavailable. Surface compatibility now rather
+        // than waiting for the player to click Continue.
+        state.textContent = '只读兼容';
+        showNote(error?.message || '常驻沉浸舞台预创建失败；本楼仍可只读查看。');
+      }
+    }
+
+    function shouldAutoEnterOpening(context) {
+      return Boolean(
+        context?.isLatest
+        && /\[\s*MGQ_OPENING_UI\s*\]/i.test(String(context?.rawText || '')),
+      );
+    }
+
+    async function enterPersistentHost(context, preferredMode = 'auto') {
+      if (!context) throw new Error('当前楼层尚未就绪');
+      const host = await ensureParentHost();
+      return host.enter({
+        protocol: IMMERSIVE_PROTOCOL,
+        chatKey: currentChatId(),
+        anchorMessageIds: context.idCandidates,
+        preferredMode,
+      });
+    }
+
+    async function autoEnterOpening(context) {
+      state.textContent = '启动界面';
+      excerpt.textContent = '正在载入 MGQ 开局界面…';
+      continueButton.disabled = true;
+      announceHeight();
+      try {
+        // Automatic startup deliberately begins in pseudo fullscreen. Native
+        // fullscreen still requires a real user gesture on several TT engines.
+        await enterPersistentHost(context, 'pseudo');
+      } catch (error) {
+        state.textContent = '启动失败';
+        showNote('opening-bootstrap-failed：' + (error?.message || '沉浸舞台启动失败'));
+      } finally {
+        continueButton.disabled = false;
+      }
+    }
+
+    function parentHostInstaller(config) {
+      const notify = (ok, error) => window.dispatchEvent(new CustomEvent(config.readyEvent, {
+        detail: { requestId: config.requestId, ok, error: error ? String(error) : '' },
+      }));
+      try {
+        const old = window[config.hostKey];
+        if (old?.protocol === config.immersiveProtocol
+          && old?.implementationRevision === config.implementationRevision
+          && typeof old.enter === 'function') {
+          notify(true);
+          return;
+        }
+
+        const releaseByChat = new Map();
+        const cleanups = [];
+        let frame = null;
+        let port = null;
+        let hostSource = null;
+        let sessionId = '';
+        let chatKey = '';
+        let epoch = 0;
+        let outboundSeq = 0;
+        let inboundSeq = 0;
+        let phase = 'Dormant';
+        let mode = null;
+        let lastComplete = null;
+        let pending = null;
+        let highestFloor = -1;
+        let previousHtmlOverflow = '';
+        let previousBodyOverflow = '';
+        let activeRelease = null;
+        let bootPromise = null;
+        let bootCancel = null;
+        let bootRevision = -1;
+        let abortController = new AbortController();
+        let compatibilityReason = '';
+        let enterQueue = Promise.resolve();
+        let openingSession = false;
+        let openingAnchor = null;
+        let recoveryUsed = false;
+        let recovering = false;
+        let terminalHostError = '';
+        let historyGuardArmed = false;
+        let historyGuardToken = '';
+        let ignoredGuardPops = 0;
+        let destroyed = false;
+        let lifecycleRevision = 0;
+        const handledActionRequestIds = new Set();
+        const guardedLegacyDocuments = new WeakSet();
+        const legacyAudioObservers = new Set();
+
+        const api = {
+          protocol: config.immersiveProtocol,
+          implementationRevision: config.implementationRevision,
+          presentationProtocol: config.presentationProtocol,
+          statusProtocol: config.statusProtocol,
+          ensureHost,
+          enter,
+          exit,
+          present,
+          getState,
+          destroy,
+          handleChatChanged,
+        };
+        window[config.hostKey] = api;
+        installChatLifecycle();
+        suppressLegacyParentAudio();
+        installLegacyAudioGuard();
+        notify(true);
+
+        const requiredReleaseFiles = Object.freeze([
+          'opening.html',
+          'message-loader.html',
+          'mgq-v4.js',
+          'mgq-v4.css',
+        ]);
+
+        async function resolveRelease(key) {
+          if (releaseByChat.has(key)) return releaseByChat.get(key);
+          // A supplied-but-invalid pin is a broken/tampered card.  Do not hide
+          // that by silently loading whatever happens to be on main.
+          const cardPin = config.cardReleaseLock === null || config.cardReleaseLock === undefined
+            ? null
+            : normalizeRelease(config.cardReleaseLock, 'card-pin', []);
+          const selected = await resolveCompatibleManifestOrPin(cardPin);
+          releaseByChat.set(key, selected);
+          return selected;
+        }
+
+        async function resolveCompatibleManifestOrPin(cardPin) {
+          let lastError = null;
+          for (const url of config.manifestUrls) {
+            try {
+              const response = await fetch(url, { cache: 'no-cache', signal: abortController.signal });
+              if (!response.ok) throw new Error('HTTP ' + response.status);
+              const manifest = await response.json();
+              if (cardPin && manifest.card_version !== cardPin.cardVersion) {
+                throw new Error('root manifest 与卡片版本不同');
+              }
+              return normalizeRelease(manifest, url, config.manifestUrls);
+            } catch (error) {
+              if (error?.name === 'AbortError') throw error;
+              lastError = error;
+            }
+          }
+          if (cardPin) return cardPin;
+          throw new Error('无法解析兼容的正式前端版本：' + (lastError?.message || lastError || 'unknown'));
+        }
+
+        function normalizeRelease(manifest, source, fallbackRoots) {
+          if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+            throw new Error('release manifest 不是对象');
+          }
+          if (manifest.schema !== config.manifestProtocol) throw new Error('release manifest 协议不匹配');
+          if (manifest.immersive_protocol !== config.immersiveProtocol) throw new Error('沉浸协议不兼容');
+          if (manifest.presentation_protocol !== config.presentationProtocol) throw new Error('场景协议不兼容');
+          if (manifest.status_protocol !== config.statusProtocol) throw new Error('状态协议不兼容');
+          const cardVersion = String(manifest.card_version || '').trim();
+          const buildId = String(manifest.build_id || '').trim();
+          const sourceCommit = String(manifest.source_commit || '').trim();
+          const basePath = String(manifest.base_path || '').trim().replace(/\/?$/, '/');
+          if (!cardVersion || !buildId || !sourceCommit || !basePath) {
+            throw new Error('release manifest 缺少 card_version/build_id/source_commit/base_path');
+          }
+          if (!/^[A-Za-z0-9][A-Za-z0-9._-]{5,127}$/.test(buildId)) {
+            throw new Error('release manifest build_id 格式非法');
+          }
+          if (!/^[0-9a-f]{40}$/i.test(sourceCommit)) {
+            throw new Error('release manifest source_commit 必须是 40 位十六进制提交');
+          }
+          const files = manifest.files;
+          if (!files || typeof files !== 'object' || Array.isArray(files)) throw new Error('release manifest 缺少 files');
+          const bgmProtocol = String(manifest.bgm_protocol || '').trim();
+          const bgmBasePath = String(manifest.bgm_base_path || '').trim();
+          if (bgmProtocol !== config.bgmProtocol) {
+            throw new Error('BGM manifest 协议不兼容');
+          }
+          if (bgmBasePath !== 'bgm/') {
+            throw new Error('BGM base_path 必须是不可变 release 内的 bgm/');
+          }
+          const normalizedFiles = {};
+          const pinnedReleaseFiles = [...requiredReleaseFiles, 'bgm-manifest.json'];
+          for (const file of pinnedReleaseFiles) {
+            if (!Object.prototype.hasOwnProperty.call(files, file) || !files[file]) {
+              throw new Error('release manifest 缺少 ' + file);
+            }
+            const metadata = files[file];
+            if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+              throw new Error('release manifest ' + file + ' 元数据非法');
+            }
+            if (!/^[0-9a-f]{64}$/i.test(String(metadata.sha256 || ''))) {
+              throw new Error('release manifest ' + file + ' sha256 非法');
+            }
+            const size = Number(metadata.size);
+            if (!Number.isSafeInteger(size) || size <= 0) {
+              throw new Error('release manifest ' + file + ' size 非法');
+            }
+            normalizedFiles[file] = Object.freeze({
+              sha256: String(metadata.sha256).toLowerCase(),
+              size,
+            });
+          }
+          const roots = [];
+          const addRoot = value => {
+            const root = String(value || '').trim();
+            if (!/^https:\/\//i.test(root)) return;
+            try {
+              const normalized = new URL(root);
+              normalized.hash = '';
+              normalized.search = '';
+              if (!normalized.pathname.endsWith('/')) normalized.pathname += '/';
+              if (!roots.includes(normalized.href)) roots.push(normalized.href);
+            } catch (_) {}
+          };
+          for (const value of Array.isArray(manifest.base_urls) ? manifest.base_urls : []) addRoot(value);
+          if (manifest.channels && typeof manifest.channels === 'object') {
+            for (const value of Object.values(manifest.channels)) addRoot(value);
+          }
+          for (const value of Array.isArray(fallbackRoots) ? fallbackRoots : []) {
+            try { addRoot(new URL('.', value).href); } catch (_) {}
+          }
+          if (/^https:\/\//i.test(basePath)) addRoot(basePath);
+          const baseUrls = [];
+          const resolvedBasePath = /^https:\/\//i.test(basePath) ? basePath : basePath.replace(/^\/+/, '');
+          for (const root of roots) {
+            try {
+              const resolved = new URL(resolvedBasePath, root).href.replace(/\/?$/, '/');
+              const path = decodeURIComponent(new URL(resolved).pathname);
+              if (!path.includes('/releases/') || !path.includes('/' + cardVersion + '/' + buildId + '/')) {
+                throw new Error('release base_path 不是不可变目录');
+              }
+              if (!baseUrls.includes(resolved)) baseUrls.push(resolved);
+            } catch (error) {
+              if (String(error?.message || error).includes('不是不可变目录')) throw error;
+            }
+          }
+          if (!baseUrls.length) throw new Error('release manifest 没有可用的不可变 base URL');
+          const bgmBaseUrls = baseUrls.map(
+            base => new URL(bgmBasePath, base).href.replace(/\/?$/, '/'),
+          );
+          return Object.freeze({
+            buildId,
+            cardVersion,
+            sourceCommit,
+            baseUrl: baseUrls[0],
+            baseUrls: Object.freeze(baseUrls),
+            bgmProtocol,
+            bgmBasePath,
+            bgmBaseUrls: Object.freeze(bgmBaseUrls),
+            files: Object.freeze(normalizedFiles),
+            manifestUrl: source,
+          });
+        }
+
+        async function ensureHost(requestedChatKey, expectedRevision = lifecycleRevision) {
+          assertLifecycle(expectedRevision);
+          const key = String(requestedChatKey || chatKey || readChatKey()).trim();
+          if (!key) throw new Error('chatKey 不能为空');
+          const release = await resolveRelease(key);
+          assertLifecycle(expectedRevision);
+          if (frame && activeRelease?.buildId !== release.buildId) resetFrame();
+          activeRelease = release;
+          if (frame?.isConnected && port) return capabilities();
+          if (bootPromise && bootRevision === expectedRevision) return bootPromise;
+          if (bootPromise) resetFrame('host-boot-superseded');
+          phase = 'Booting';
+          const candidate = document.createElement('iframe');
+          frame = candidate;
+          candidate.dataset.mgqImmersiveHost = 'v1';
+          candidate.dataset.ttMobileSurface = 'viewport-host';
+          candidate.dataset.mgqBuildId = release.buildId;
+          candidate.title = 'MGQ 沉浸游戏舞台';
+          candidate.allow = 'fullscreen; autoplay';
+          candidate.setAttribute('allowfullscreen', '');
+          candidate.style.cssText = 'position:fixed;inset:0;width:100%;height:var(--tt-base-viewport-height,100dvh);border:0;background:#07050d;z-index:2147483000;display:none;';
+          candidate.srcdoc = createHostDocument(release);
+          let settled = false;
+          let resolveBoot;
+          let rejectBoot;
+          const promise = new Promise((resolve, reject) => {
+            resolveBoot = resolve;
+            rejectBoot = reject;
+          });
+          const finish = (error, value) => {
+            if (settled) return;
+            settled = true;
+            if (bootPromise === promise) {
+              bootPromise = null;
+              bootCancel = null;
+              bootRevision = -1;
+            }
+            if (error) {
+              try { candidate.remove?.(); } catch (_) {}
+              if (frame === candidate) frame = null;
+              rejectBoot(error);
+            } else {
+              resolveBoot(value);
+            }
+          };
+          bootPromise = promise;
+          bootRevision = expectedRevision;
+          bootCancel = reason => finish(lifecycleError(reason || 'host-boot-cancelled'));
+          candidate.addEventListener('error', () => {
+            if (sessionId && isLifecycleCurrent(expectedRevision)) {
+              void recoverHostOnce('host-frame-error');
+            }
+            finish(new Error('host-frame-load-failed'));
+          }, { once: true });
+          candidate.addEventListener('load', () => {
+            try {
+              assertLifecycle(expectedRevision);
+              if (frame !== candidate || !candidate.isConnected) throw lifecycleError('host-frame-replaced');
+              const channel = new MessageChannel();
+              port = channel.port1;
+              hostSource = candidate.contentWindow;
+              port.onmessage = onHostPacket;
+              port.start?.();
+              candidate.contentWindow.postMessage({ protocol: config.immersiveProtocol, type: 'MGQ_HOST_CONNECT' }, '*', [channel.port2]);
+              phase = 'Dormant';
+              finish(null, capabilities());
+            } catch (error) {
+              closeTransport();
+              if (isLifecycleCurrent(expectedRevision)) phase = 'Dormant';
+              finish(error);
+            }
+          }, { once: true });
+          document.body.appendChild(candidate);
+          return promise;
+        }
+
+        function enter(request) {
+          if (destroyed) return Promise.reject(lifecycleError('host-destroyed'));
+          const run = enterQueue.then(() => enterSession(request), () => enterSession(request));
+          enterQueue = run.catch(() => {});
+          return run;
+        }
+
+        async function enterSession(request) {
+          const operationRevision = ++lifecycleRevision;
+          assertLifecycle(operationRevision);
+          if (request?.protocol !== config.immersiveProtocol) throw new Error('沉浸协议不匹配');
+          const nextChat = String(request.chatKey || '').trim();
+          if (!nextChat) throw new Error('chatKey 不能为空');
+          if (chatKey && chatKey !== nextChat) {
+            await handleChatChanged(nextChat, operationRevision);
+            assertLifecycle(operationRevision);
+          }
+          const sameChatReentry = Boolean(sessionId && chatKey === nextChat);
+          if (sameChatReentry) {
+            epoch += 1;
+            pauseHostAudio();
+            abortController.abort();
+            abortController = new AbortController();
+            sessionId = '';
+            outboundSeq = 0;
+            inboundSeq = 0;
+            pending = null;
+            handledActionRequestIds.clear();
+          }
+          const latest = readLatestAssistant();
+          const initialPresentation = await readControllerPresentation(latest, 'character-message-rendered');
+          assertLifecycle(operationRevision);
+          const opening = Boolean(latest && isOpeningMarker(latest.rawText));
+          if (!initialPresentation && !opening) {
+            compatibilityReason = 'controller-unavailable-read-only';
+            throw new Error('controller-unavailable-read-only：运行控制器未提供原子场景，本楼仍可只读查看；请使用新版角色卡新建聊天。');
+          }
+          await ensureHost(nextChat, operationRevision);
+          assertLifecycle(operationRevision);
+          suppressLegacyParentAudio();
+          if (!sameChatReentry) epoch += 1;
+          sessionId = crypto?.randomUUID?.() || 'mgq-session-' + Math.random().toString(36).slice(2);
+          chatKey = nextChat;
+          outboundSeq = 0;
+          inboundSeq = 0;
+          highestFloor = -1;
+          lastComplete = null;
+          pending = null;
+          openingSession = opening;
+          openingAnchor = opening ? detachedClone(latest) : null;
+          recoveryUsed = false;
+          recovering = false;
+          terminalHostError = '';
+          handledActionRequestIds.clear();
+          if (!sameChatReentry) lockScroll();
+          armBackGuard();
+          phase = 'ActivePseudo';
+          mode = 'pseudo';
+          frame.style.display = 'block';
+          send('SESSION_ENTER', {
+            anchorMessageIds: normalizeIds(request.anchorMessageIds),
+            mode,
+            opening,
+            openingBinding: openingAnchor,
+          });
+
+          const wantsNative = request.preferredMode !== 'pseudo' && !isIos();
+          if (wantsNative && typeof frame.requestFullscreen === 'function') {
+            const fullscreenFrame = frame;
+            try {
+              await fullscreenFrame.requestFullscreen();
+              if (!isLifecycleCurrent(operationRevision)) {
+                await exitNative(fullscreenFrame);
+                throw lifecycleError('native-fullscreen-superseded');
+              }
+              phase = 'ActiveNative';
+              mode = 'native';
+              send('MODE_CHANGED', { mode });
+            } catch (_) {}
+          }
+          assertLifecycle(operationRevision);
+          if (initialPresentation) present(initialPresentation);
+          return { sessionId, epoch, mode };
+        }
+
+        async function exit(request) {
+          if (request?.sessionId !== sessionId || Number(request?.epoch) !== epoch) return;
+          if (!['return-to-tavern', 'android-back-confirmed', 'host-failure'].includes(String(request?.reason || ''))) return;
+          await deactivate(false);
+        }
+
+        function present(value) {
+          if (!sessionId || !port) return false;
+          const presentation = normalizePresentationValue(value);
+          if (!presentation) return false;
+          const normalizedChatKey = presentation.chatKey;
+          if (normalizedChatKey !== chatKey) return false;
+          const floorIndex = presentation.floorIndex;
+          const allowFloorRollback = presentation.reason === 'message-deleted';
+          if (!Number.isInteger(floorIndex) || floorIndex < 0 || (floorIndex < highestFloor && !allowFloorRollback)) return false;
+          const signature = presentation.presentationSignature;
+          const status = presentation.generation;
+          const target = status === 'pending' ? pending : lastComplete;
+          if (target?.floorIndex === floorIndex && target?.presentationSignature === signature) return false;
+          highestFloor = allowFloorRollback ? floorIndex : Math.max(highestFloor, floorIndex);
+          if (status === 'pending') {
+            pending = presentation;
+            send('PRESENTATION_PENDING', presentation);
+          } else {
+            lastComplete = presentation;
+            pending = null;
+            openingSession = false;
+            openingAnchor = null;
+            send('PRESENTATION_COMPLETE', presentation);
+          }
+          return true;
+        }
+
+        function sanitizePublicStateValue(value) {
+          const record = candidate => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+            ? candidate : {};
+          const cleanText = candidate => ['string', 'number', 'boolean'].includes(typeof candidate)
+            ? String(candidate).trim() : '';
+          const cleanNumber = candidate => Number.isFinite(Number(candidate)) ? Math.max(0, Number(candidate)) : 0;
+          const cleanList = candidate => (Array.isArray(candidate) ? candidate : [])
+            .map(cleanText).filter(Boolean);
+          const cleanTextMap = candidate => Object.fromEntries(Object.entries(record(candidate))
+            .map(([key, item]) => [cleanText(key), cleanText(item)])
+            .filter(([key, item]) => key && item));
+          if (!value || typeof value !== 'object' || Array.isArray(value)
+            || value.protocol !== config.publicStateProtocol) return null;
+          const world = record(value.world);
+          const route = record(value.route);
+          const protagonist = record(value.protagonist);
+          const dimensions = record(protagonist.dimensions);
+          const scene = record(value.scene);
+          const sceneStatus = record(scene.status);
+          const r18 = record(scene.r18);
+          const inventory = record(value.inventory);
+          const battle = record(value.battle);
+          const battleSnapshot = record(battle.snapshot);
+          const wave = record(battleSnapshot.wave);
+          const battleActor = (candidate, player) => {
+            const actor = record(candidate);
+            const output = {
+              id: cleanText(actor.id),
+              display_name: cleanText(actor.display_name),
+              hp: cleanNumber(actor.hp),
+              max_hp: cleanNumber(actor.max_hp),
+              guard: cleanNumber(actor.guard),
+              statuses: (Array.isArray(actor.statuses) ? actor.statuses : []).map(item => {
+                const status = record(item);
+                return {
+                  status_id: cleanText(status.status_id),
+                  stacks: cleanNumber(status.stacks),
+                  remaining_turns: cleanNumber(status.remaining_turns),
+                };
+              }),
+            };
+            if (player) {
+              output.ap = cleanNumber(actor.ap);
+              output.max_ap = cleanNumber(actor.max_ap);
+              output.sp = cleanNumber(actor.sp);
+              output.max_sp = cleanNumber(actor.max_sp);
+            } else {
+              const intent = record(actor.current_intent);
+              output.current_intent = actor.current_intent == null ? null : {
+                skill_id: cleanText(intent.skill_id),
+                name: cleanText(intent.name),
+                kind: cleanText(intent.kind),
+                value: cleanNumber(intent.value),
+                telegraph: cleanText(intent.telegraph),
+              };
+            }
+            return output;
+          };
+          return {
+            protocol: config.publicStateProtocol,
+            world: {
+              time: cleanText(world.time), location: cleanText(world.location), region: cleanText(world.region),
+              public_situation: cleanText(world.public_situation), known_facts: cleanList(world.known_facts),
+              public_factions: cleanTextMap(world.public_factions),
+              public_clocks: (Array.isArray(world.public_clocks) ? world.public_clocks : []).map(item => {
+                const clock = record(item);
+                return { id: cleanText(clock.id), stage: cleanText(clock.stage), speed: cleanText(clock.speed) };
+              }),
+            },
+            route: {
+              chapter: cleanText(route.chapter), current_node: cleanText(route.current_node),
+              mode: cleanText(route.mode), objectives: cleanList(route.objectives),
+            },
+            protagonist: {
+              mode: cleanText(protagonist.mode), name: cleanText(protagonist.name), species: cleanText(protagonist.species),
+              public_identity: cleanText(protagonist.public_identity), stance: cleanText(protagonist.stance),
+              hp: cleanNumber(protagonist.hp), max_hp: cleanNumber(protagonist.max_hp),
+              sp: cleanNumber(protagonist.sp), max_sp: cleanNumber(protagonist.max_sp),
+              public_effects: cleanList(protagonist.public_effects),
+              dimensions: Object.fromEntries(['swordsmanship', 'magic', 'willpower', 'insight', 'negotiation']
+                .map(key => [key, { stage: cleanText(record(dimensions[key]).stage) }])),
+            },
+            relations: (Array.isArray(value.relations) ? value.relations : []).map(item => {
+              const relation = record(item);
+              const stages = record(relation.stages);
+              return {
+                character_id: cleanText(relation.character_id), name: cleanText(relation.name),
+                public_identity: cleanText(relation.public_identity),
+                stages: Object.fromEntries(['affection', 'trust', 'respect', 'intimacy', 'desire', 'guard']
+                  .map(key => [key, cleanText(stages[key])])),
+                public_tags: cleanList(relation.public_tags),
+              };
+            }),
+            scene: {
+              present_characters: cleanList(scene.present_characters), focus_characters: cleanList(scene.focus_characters),
+              known_defeat_consequences: cleanList(scene.known_defeat_consequences),
+              status: {
+                node: cleanText(sceneStatus.node), pressure: cleanText(sceneStatus.pressure),
+                location_detail: cleanText(sceneStatus.location_detail), atmosphere: cleanText(sceneStatus.atmosphere),
+                last_action: cleanText(sceneStatus.last_action), result: cleanText(sceneStatus.result),
+              },
+              actors: (Array.isArray(scene.actors) ? scene.actors : []).map(item => {
+                const actor = record(item);
+                return {
+                  actor_id: cleanText(actor.actor_id), character_id: cleanText(actor.character_id),
+                  form_key: cleanText(actor.form_key), name: cleanText(actor.name),
+                  public_identity: cleanText(actor.public_identity), position: cleanText(actor.position),
+                  action: cleanText(actor.action), emotion: cleanText(actor.emotion),
+                  constraint: cleanText(actor.constraint), relation_stage: cleanText(actor.relation_stage),
+                  tags: cleanList(actor.tags), portrait_key: cleanText(actor.portrait_key),
+                };
+              }),
+              r18: {
+                active: r18.active === true, mode: cleanText(r18.mode), participants: cleanList(r18.participants),
+                control: cleanText(r18.control), protagonist_response: cleanText(r18.protagonist_response),
+                partner_response: cleanText(r18.partner_response), aftereffects: cleanList(r18.aftereffects),
+                next_risk: cleanText(r18.next_risk),
+              },
+            },
+            inventory: {
+              equipment: cleanList(inventory.equipment), items: cleanList(inventory.items), clues: cleanList(inventory.clues),
+            },
+            recollections: (Array.isArray(value.recollections) ? value.recollections : []).map(item => {
+              const recollection = record(item);
+              const firstMessageId = Number(recollection.first_message_id);
+              return {
+                group: cleanText(recollection.group), key: cleanText(recollection.key),
+                first_message_id: Number.isInteger(firstMessageId) ? firstMessageId : -1,
+              };
+            }),
+            battle: {
+              battle_id: cleanText(battle.battle_id), revision: cleanNumber(battle.revision),
+              active: battle.active === true, lifecycle: cleanText(battle.lifecycle),
+              snapshot: {
+                protocol: 'mgq-battle-public-snapshot/v2', battle_id: cleanText(battleSnapshot.battle_id),
+                encounter_id: cleanText(battleSnapshot.encounter_id), revision: cleanNumber(battleSnapshot.revision),
+                phase: cleanText(battleSnapshot.phase), turn: cleanNumber(battleSnapshot.turn),
+                wave: { current: cleanNumber(wave.current), total: cleanNumber(wave.total), label: cleanText(wave.label) },
+                player: battleActor(battleSnapshot.player, true),
+                enemies: (Array.isArray(battleSnapshot.enemies) ? battleSnapshot.enemies : []).map(item => battleActor(item, false)),
+                current_enemy_id: cleanText(battleSnapshot.current_enemy_id),
+              },
+            },
+            settings: { battle_mode: cleanText(record(value.settings).battle_mode) },
+          };
+        }
+
+        function sanitizeStatusSnapshotValue(value) {
+          const record = candidate => candidate && typeof candidate === 'object' && !Array.isArray(candidate)
+            ? candidate : {};
+          const cleanText = candidate => ['string', 'number', 'boolean'].includes(typeof candidate)
+            ? String(candidate).trim() : '';
+          const cleanList = candidate => (Array.isArray(candidate) ? candidate : [])
+            .map(cleanText).filter(Boolean);
+          if (!value || typeof value !== 'object' || Array.isArray(value)
+            || value.protocol !== config.statusProtocol) return null;
+          const source = record(value.status_data);
+          const requiredText = ['chapter', 'time', 'location', 'identity'];
+          const requiredLists = [
+            'objectives', 'public_effects', 'companions', 'equipment', 'key_items',
+            'recent_item_changes', 'known_facts', 'open_clues', 'public_clocks', 'alerts',
+          ];
+          if (requiredText.some(field => !cleanText(source[field]))
+            || requiredLists.some(field => !Array.isArray(source[field]))) return null;
+          const vitals = record(source.vitals);
+          const vitalValues = ['hp', 'max_hp', 'sp', 'max_sp'].map(field => Number(vitals[field]));
+          if (vitalValues.some(number => !Number.isFinite(number) || number < 0)
+            || vitalValues[0] > vitalValues[1] || vitalValues[2] > vitalValues[3]) return null;
+          const hasOwn = (target, field) => Object.prototype.hasOwnProperty.call(target, field);
+          const textObject = (candidate, fields) => {
+            const input = record(candidate);
+            return Object.fromEntries(fields
+              .filter(field => hasOwn(input, field))
+              .map(field => [field, cleanText(input[field])]));
+          };
+          const actorFields = [
+            'actor_id', 'character_id', 'form_key', 'species_key', 'name', 'role',
+            'identity', 'position', 'action', 'intent', 'mood', 'emotion', 'constraint',
+            'relation_stage', 'portrait_key', 'persistence',
+          ];
+          const sanitizeActor = (candidate, requireIdentity) => {
+            const input = record(candidate);
+            if (requireIdentity && ['actor_id', 'character_id', 'form_key'].some(field => !cleanText(input[field]))) {
+              return null;
+            }
+            const output = textObject(input, actorFields);
+            if (hasOwn(input, 'tags')) output.tags = cleanList(input.tags);
+            if (hasOwn(input, 'desire_profile')) {
+              output.desire_profile = input.desire_profile === null
+                ? null
+                : textObject(input.desire_profile, ['intent', 'desire', 'stimulus']);
+            }
+            return output;
+          };
+          const companions = [];
+          for (const item of source.companions) {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+              const companion = sanitizeActor(item, false);
+              if (companion && Object.keys(companion).length > 0) companions.push(companion);
+            } else if (cleanText(item)) companions.push(cleanText(item));
+          }
+          const publicClocks = [];
+          for (const item of source.public_clocks) {
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+              const clock = textObject(item, ['id', 'stage', 'speed']);
+              if (Object.keys(clock).length > 0) publicClocks.push(clock);
+            } else if (cleanText(item)) publicClocks.push(cleanText(item));
+          }
+          const statusData = {
+            chapter: cleanText(source.chapter),
+            time: cleanText(source.time),
+            location: cleanText(source.location),
+            identity: cleanText(source.identity),
+            objectives: cleanList(source.objectives),
+            vitals: {
+              hp: vitalValues[0], max_hp: vitalValues[1],
+              sp: vitalValues[2], max_sp: vitalValues[3],
+            },
+            public_effects: cleanList(source.public_effects),
+            companions,
+            equipment: cleanList(source.equipment),
+            key_items: cleanList(source.key_items),
+            recent_item_changes: cleanList(source.recent_item_changes),
+            known_facts: cleanList(source.known_facts),
+            open_clues: cleanList(source.open_clues),
+            public_clocks: publicClocks,
+            alerts: cleanList(source.alerts),
+          };
+          const optionalRecord = (field, sanitizer) => {
+            if (!hasOwn(source, field)) return;
+            statusData[field] = source[field] === null ? null : sanitizer(source[field]);
+          };
+          optionalRecord('scene_state', item => textObject(item, ['node', 'pressure', 'location_detail', 'atmosphere']));
+          optionalRecord('beat', item => textObject(item, ['last_action', 'result', 'unresolved', 'next_hook']));
+          optionalRecord('protagonist_state', item => {
+            const input = record(item);
+            const output = textObject(input, [
+              'posture', 'action', 'clothing', 'equipment_state', 'held_item', 'mobility',
+            ]);
+            if (hasOwn(input, 'visible_condition')) output.visible_condition = cleanList(input.visible_condition);
+            return output;
+          });
+          if (hasOwn(source, 'actors')) {
+            if (source.actors === null) {
+              statusData.actors = null;
+            } else if (Array.isArray(source.actors)) {
+              const actors = source.actors.map(item => sanitizeActor(item, true));
+              if (actors.some(item => !item)) return null;
+              statusData.actors = actors;
+            } else return null;
+          }
+          optionalRecord('route_anchor', item => {
+            const input = record(item);
+            const output = textObject(input, [
+              'opening_id', 'scene_id', 'node', 'core_character', 'phase',
+              'protected_until', 'exit_condition',
+            ]);
+            if (hasOwn(input, 'exit_conditions')) output.exit_conditions = cleanList(input.exit_conditions);
+            for (const field of ['unsettled', 'exit_pending', 'settled']) {
+              if (typeof input[field] === 'boolean') output[field] = input[field];
+            }
+            return output;
+          });
+          optionalRecord('r18_state', item => {
+            const input = record(item);
+            const output = textObject(input, [
+              'mode', 'control', 'protagonist_response', 'partner_response', 'next_risk',
+            ]);
+            if (typeof input.active === 'boolean') output.active = input.active;
+            if (hasOwn(input, 'participants')) output.participants = cleanList(input.participants);
+            if (hasOwn(input, 'aftereffects')) output.aftereffects = cleanList(input.aftereffects);
+            return output;
+          });
+          const messageId = value.message_id === null ? null : Number(value.message_id);
+          const signature = cleanText(value.presentation_signature);
+          if ((messageId !== null && (!Number.isInteger(messageId) || messageId < 0)) || !signature) return null;
+          return {
+            protocol: config.statusProtocol,
+            message_id: messageId,
+            presentation_signature: signature,
+            status_data: statusData,
+          };
+        }
+
+        function sanitizePresentationDialogue(value) {
+          if (!Array.isArray(value)) return [];
+          const fields = [
+            'type', 'speaker', 'text', 'actor_id', 'character_id', 'form_key',
+            'portrait_key', 'slot', 'emotion', 'action',
+          ];
+          return value.filter(item => item && typeof item === 'object' && !Array.isArray(item)
+            && String(item.text || '').trim()).map(item => Object.fromEntries(fields
+            .filter(field => Object.prototype.hasOwnProperty.call(item, field))
+            .map(field => [field, String(item[field] ?? '').trim()])));
+        }
+
+        function sanitizePresentationStage(value) {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+          const actorFields = [
+            'speaker', 'actor_id', 'character_id', 'form_key', 'portrait_key',
+            'slot', 'emotion', 'action',
+          ];
+          const actors = (Array.isArray(value.actors) ? value.actors : [])
+            .filter(item => item && typeof item === 'object' && !Array.isArray(item))
+            .slice(0, 5)
+            .map(item => Object.fromEntries(actorFields
+              .filter(field => Object.prototype.hasOwnProperty.call(item, field))
+              .map(field => [field, String(item[field] ?? '').trim()])));
+          const output = { actors };
+          for (const field of ['background_key', 'bgm_key']) {
+            if (Object.prototype.hasOwnProperty.call(value, field)) {
+              output[field] = String(value[field] ?? '').trim();
+            }
+          }
+          return output;
+        }
+
+        function sanitizePresentationResources(value) {
+          const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+          const output = {};
+          for (const field of ['portrait_key', 'illustration_key', 'background_key', 'bgm_key']) {
+            if (!Object.prototype.hasOwnProperty.call(input, field)) continue;
+            output[field] = input[field] === null ? null : String(input[field] ?? '').trim();
+          }
+          return output;
+        }
+
+        function sanitizePresentationBattle(value) {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+          const output = {};
+          const scalarFields = [
+            'schema_version', 'battle_id', 'encounter_id', 'revision', 'engine', 'phase',
+            'readonly', 'type', 'kind', 'request_type', 'enemy_id', 'enemy_name',
+            'reason', 'can_flee',
+          ];
+          for (const field of scalarFields) {
+            if (Object.prototype.hasOwnProperty.call(value, field)
+              && ['string', 'number', 'boolean'].includes(typeof value[field])) {
+              output[field] = value[field];
+            }
+          }
+          if (value.presentation && typeof value.presentation === 'object' && !Array.isArray(value.presentation)) {
+            const presentation = {};
+            for (const field of ['title', 'enemy_portrait_key', 'background_key', 'bgm_key']) {
+              if (Object.prototype.hasOwnProperty.call(value.presentation, field)) {
+                presentation[field] = String(value.presentation[field] ?? '').trim();
+              }
+            }
+            if (value.presentation.enemy_portraits && typeof value.presentation.enemy_portraits === 'object'
+              && !Array.isArray(value.presentation.enemy_portraits)) {
+              presentation.enemy_portraits = Object.fromEntries(Object.entries(value.presentation.enemy_portraits)
+                .map(([key, item]) => [String(key).trim(), String(item ?? '').trim()])
+                .filter(([key, item]) => key && item));
+            }
+            output.presentation = presentation;
+          }
+          if (value.narration && typeof value.narration === 'object' && !Array.isArray(value.narration)) {
+            output.narration = Object.fromEntries(['entry', 'latest']
+              .filter(field => Object.prototype.hasOwnProperty.call(value.narration, field))
+              .map(field => [field, String(value.narration[field] ?? '').trim()]));
+          }
+          for (const field of [
+            'engine_state', 'log', 'result', 'enemy', 'player', 'player_effects',
+            'enemy_effects',
+          ]) {
+            if (Object.prototype.hasOwnProperty.call(value, field)) output[field] = detachedClone(value[field]);
+          }
+          return output;
+        }
+
+        function normalizePresentationValue(value) {
+          if (!value || typeof value !== 'object' || Array.isArray(value)
+            || value.protocol !== config.presentationProtocol) return null;
+          const cloned = detachedClone(value);
+          if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned)) return null;
+          const normalizedChatKey = String(cloned.chatKey ?? cloned.chat_key ?? '').trim();
+          const floorIndex = Number(cloned.floorIndex ?? cloned.floor_index);
+          const presentationSignature = String(
+            cloned.presentationSignature ?? cloned.presentation_signature ?? '',
+          ).trim();
+          const generation = cloned.generation ?? cloned.generation_state ?? cloned.generationStatus;
+          if (!normalizedChatKey || !Number.isInteger(floorIndex) || floorIndex < 0
+            || !presentationSignature || !['pending', 'complete'].includes(generation)) return null;
+
+          const messageIdCandidates = normalizeIds(
+            cloned.messageIdCandidates ?? [cloned.messageId, cloned.message_id, floorIndex],
+          );
+          const rawMessageId = Number(cloned.messageId ?? cloned.message_id);
+          const messageId = Number.isInteger(rawMessageId) && rawMessageId >= 0
+            ? rawMessageId
+            : (messageIdCandidates[0] ?? floorIndex);
+          const statusSnapshotInput = cloned.statusSnapshot ?? cloned.status_snapshot ?? null;
+          const statusSnapshot = statusSnapshotInput === null
+            ? null
+            : sanitizeStatusSnapshotValue(statusSnapshotInput);
+          if (statusSnapshotInput !== null && !statusSnapshot) return null;
+          if (statusSnapshot && (
+            statusSnapshot.presentation_signature !== presentationSignature
+            || !messageIdCandidates.includes(statusSnapshot.message_id)
+          )) return null;
+          const publicStateInput = cloned.publicState ?? cloned.public_state ?? null;
+          const publicState = publicStateInput === null ? null : sanitizePublicStateValue(publicStateInput);
+          if (publicStateInput !== null && !publicState) return null;
+
+          const body = String(cloned.body ?? cloned.rawText ?? '');
+          const rawText = String(cloned.rawText ?? cloned.body ?? '');
+          return Object.freeze({
+            protocol: config.presentationProtocol,
+            chatKey: normalizedChatKey,
+            floorIndex,
+            messageIdCandidates,
+            messageId,
+            presentationSignature,
+            generation,
+            readOnly: generation !== 'complete' || cloned.readOnly === true,
+            diagnostics: (Array.isArray(cloned.diagnostics) ? cloned.diagnostics : []).map(item => {
+              const input = item && typeof item === 'object' && !Array.isArray(item) ? item : {};
+              return {
+                code: String(input.code || '').trim(),
+                errors: Array.isArray(input.errors) ? input.errors.map(error => String(error || '').trim()).filter(Boolean) : [],
+              };
+            }),
+            body,
+            rawText,
+            dialogue: sanitizePresentationDialogue(cloned.dialogue ?? cloned.dialogue_lines),
+            options: (Array.isArray(cloned.options) ? cloned.options : [])
+              .map(item => String(item ?? '').trim()).filter(Boolean),
+            stage: sanitizePresentationStage(cloned.stage),
+            resources: sanitizePresentationResources(cloned.resources),
+            statusSnapshot,
+            publicState,
+            battle: sanitizePresentationBattle(cloned.battle),
+            ...(cloned.recovered === true ? { recovered: true } : {}),
+            ...(String(cloned.reason || '').trim() ? { reason: String(cloned.reason).trim() } : {}),
+          });
+        }
+
+        function clearPresentation(reason) {
+          lastComplete = null;
+          pending = null;
+          highestFloor = -1;
+          openingSession = false;
+          openingAnchor = null;
+          send('PRESENTATION_CLEARED', { reason: String(reason || 'message-deleted') });
+          return true;
+        }
+
+        async function handleChatChanged(_nextChatKey, expectedRevision = null) {
+          const operationRevision = Number.isInteger(expectedRevision)
+            ? expectedRevision
+            : ++lifecycleRevision;
+          if (destroyed || lifecycleRevision !== operationRevision) return;
+          epoch += 1;
+          pauseHostAudio();
+          suppressLegacyParentAudio();
+          abortController.abort();
+          abortController = new AbortController();
+          closeTransport();
+          const nativeFrame = frame;
+          lastComplete = null;
+          pending = null;
+          highestFloor = -1;
+          openingSession = false;
+          openingAnchor = null;
+          handledActionRequestIds.clear();
+          disarmBackGuard();
+          unlockScroll();
+          resetFrame('chat-changed');
+          sessionId = '';
+          chatKey = '';
+          phase = 'Dormant';
+          mode = null;
+          await exitNative(nativeFrame);
+        }
+
+        async function destroy(_reason) {
+          if (destroyed) return;
+          destroyed = true;
+          const operationRevision = ++lifecycleRevision;
+          await deactivate(true, operationRevision);
+          while (cleanups.length) {
+            try { cleanups.pop()(); } catch (_) {}
+          }
+          if (window[config.hostKey] === api) delete window[config.hostKey];
+        }
+
+        async function deactivate(remove, expectedRevision = null) {
+          const operationRevision = Number.isInteger(expectedRevision)
+            ? expectedRevision
+            : ++lifecycleRevision;
+          abortController.abort();
+          abortController = new AbortController();
+          pauseHostAudio();
+          const nativeFrame = frame;
+          lastComplete = null;
+          pending = null;
+          highestFloor = -1;
+          openingSession = false;
+          openingAnchor = null;
+          handledActionRequestIds.clear();
+          disarmBackGuard();
+          unlockScroll();
+          if (frame) frame.style.display = 'none';
+          if (remove) resetFrame('host-deactivated');
+          sessionId = '';
+          chatKey = '';
+          phase = 'Dormant';
+          mode = null;
+          inboundSeq = 0;
+          outboundSeq = 0;
+          await exitNative(nativeFrame);
+        }
+
+        function send(type, payload) {
+          if (!port || !sessionId || !chatKey) return;
+          port.postMessage({
+            protocol: config.immersiveProtocol,
+            sessionId,
+            epoch,
+            seq: ++outboundSeq,
+            chatKey,
+            type,
+            payload,
+          });
+        }
+
+        function onHostPacket(event) {
+          if (!port || (event?.target && event.target !== port)) return;
+          if (!frame?.isConnected || frame?.contentWindow !== hostSource) return;
+          const packet = event?.data;
+          if (!packet || packet.protocol !== config.immersiveProtocol) return;
+          if (packet.sessionId !== sessionId || Number(packet.epoch) !== epoch || packet.chatKey !== chatKey) return;
+          if (!Number.isInteger(packet.seq) || packet.seq <= inboundSeq) return;
+          if (![
+            'HOST_READY',
+            'RETURN_TO_TAVERN_REQUEST',
+            'NATIVE_FULLSCREEN_REQUEST',
+            'NATIVE_FULLSCREEN_EXITED',
+            'PLAYER_SETTING_UPDATE_REQUEST',
+            'ACTION_REQUEST',
+            'BACK_ACTION_REQUEST',
+            'ANDROID_BACK_RESULT',
+            'HOST_ERROR',
+          ].includes(packet.type)) return;
+          inboundSeq = packet.seq;
+          if (packet.type === 'RETURN_TO_TAVERN_REQUEST') {
+            void exit({ sessionId, epoch, reason: 'return-to-tavern' });
+          } else if (packet.type === 'NATIVE_FULLSCREEN_REQUEST') {
+            void handleNativeFullscreenRequest(packet.payload);
+          } else if (packet.type === 'NATIVE_FULLSCREEN_EXITED' && phase === 'ActiveNative') {
+            phase = 'ActivePseudo';
+            mode = 'pseudo';
+          } else if (packet.type === 'PLAYER_SETTING_UPDATE_REQUEST') {
+            void handlePlayerSettingUpdate(packet.payload);
+          } else if (packet.type === 'ACTION_REQUEST') {
+            void handleActionRequest(packet.payload);
+          } else if (packet.type === 'BACK_ACTION_REQUEST') {
+            void handleBackAction('host-action');
+          } else if (packet.type === 'HOST_ERROR') {
+            void recoverHostOnce(String(packet.payload?.message || 'host-error'));
+          }
+        }
+
+        async function handleNativeFullscreenRequest(payload) {
+          const requestId = String(payload?.requestId || '');
+          let ok = false;
+          if (requestId && !isIos() && frame?.isConnected && sessionId) {
+            try {
+              if (document.fullscreenElement !== frame) await frame.requestFullscreen?.();
+              ok = document.fullscreenElement === frame;
+            } catch (_) {}
+          }
+          if (ok) {
+            phase = 'ActiveNative';
+            mode = 'native';
+          } else if (phase !== 'Dormant') {
+            phase = 'ActivePseudo';
+            mode = 'pseudo';
+          }
+          send('NATIVE_FULLSCREEN_RESULT', { requestId, ok, mode });
+        }
+
+        function captureResponseTransport() {
+          return { port, sessionId, epoch, chatKey };
+        }
+
+        function responseTransportIsCurrent(binding) {
+          return Boolean(binding?.port && port === binding.port
+            && sessionId === binding.sessionId
+            && epoch === binding.epoch
+            && chatKey === binding.chatKey);
+        }
+
+        function sendBoundResponse(binding, type, payload) {
+          if (!responseTransportIsCurrent(binding)) return false;
+          send(type, payload);
+          return true;
+        }
+
+        async function handlePlayerSettingUpdate(payload) {
+          const responseTransport = captureResponseTransport();
+          const requestId = String(payload?.requestId || '');
+          try {
+            if (!requestId) throw new Error('设置请求 ID 为空');
+            const key = String(payload?.key || '');
+            const value = String(payload?.value || '');
+            if (!isAllowedPlayerSetting(key, value)) throw new Error('不支持的玩家设置');
+            validateLiveBinding(payload?.binding, openingSession);
+            const controller = readController('updatePlayerSetting');
+            const result = await Promise.resolve(controller.updatePlayerSetting({ chatKey, key, value }));
+            validateLiveBinding(payload?.binding, openingSession);
+            const publicState = sanitizePublicStateValue(result);
+            if (!publicState) throw new Error('设置更新未返回 PublicStateV2');
+            if (publicState && lastComplete) {
+              lastComplete = Object.freeze({ ...lastComplete, publicState });
+            }
+            sendBoundResponse(responseTransport, 'PLAYER_SETTING_UPDATE_RESULT', { requestId, ok: true, publicState });
+          } catch (error) {
+            sendBoundResponse(responseTransport, 'PLAYER_SETTING_UPDATE_RESULT', {
+              requestId,
+              ok: false,
+              error: String(error?.message || error || '设置更新失败'),
+            });
+          }
+        }
+
+        async function handleActionRequest(payload) {
+          const responseTransport = captureResponseTransport();
+          const requestId = String(payload?.requestId || '');
+          try {
+            if (!requestId) throw new Error('操作请求 ID 为空');
+            const dedupeKey = sessionId + ':' + epoch + ':' + requestId;
+            if (handledActionRequestIds.has(dedupeKey)) throw new Error('重复操作已拒绝');
+            handledActionRequestIds.add(dedupeKey);
+            if (handledActionRequestIds.size > 256) {
+              handledActionRequestIds.delete(handledActionRequestIds.values().next().value);
+            }
+            const action = String(payload?.action || '');
+            const allowed = new Set([
+              'submitOpening',
+              'submitInteractionText',
+              'claimInteraction',
+              'commitInteraction',
+              'releaseInteraction',
+              'saveBattleCheckpoint',
+              'markBattleTerminal',
+              'confirmBattleResolution',
+            ]);
+            if (!allowed.has(action)) throw new Error('宿主未开放该操作');
+            validateLiveBinding(payload?.binding, action === 'submitOpening');
+            const controller = readController(action);
+            const request = detachedClone(payload?.payload || {});
+            if (action === 'submitInteractionText') {
+              request.chatKey = chatKey;
+              request.messageIdCandidates = normalizeIds(payload.binding.messageIdCandidates);
+              request.messageId = request.messageIdCandidates[0] ?? Number(payload.binding.floorIndex);
+              request.presentationSignature = String(payload.binding.presentationSignature || '');
+              request.token = String(request.token || ('mgq-' + epoch + '-' + Math.random().toString(36).slice(2)));
+            }
+            const result = await Promise.resolve(controller[action](request));
+            if (!responseTransportIsCurrent(responseTransport)
+              || readChatKey() !== responseTransport.chatKey) return;
+            const summary = summarizeActionResult(result);
+            if (summary.success !== true) throw new Error(summary.error || '操作失败');
+            sendBoundResponse(responseTransport, 'ACTION_RESULT', { requestId, ok: true, result: summary });
+          } catch (error) {
+            sendBoundResponse(responseTransport, 'ACTION_RESULT', {
+              requestId,
+              ok: false,
+              error: String(error?.message || error || '宿主操作失败'),
+            });
+          }
+        }
+
+        function validateLiveBinding(binding, allowOpening) {
+          if (!sessionId || !chatKey || readChatKey() !== chatKey) throw new Error('当前聊天已切换');
+          if (!binding || typeof binding !== 'object') throw new Error('操作绑定不完整');
+          const latest = readLatestAssistant();
+          if (!latest) throw new Error('找不到最新助手消息');
+          if (latest.presentationSignature !== binding.presentationSignature) throw new Error('操作签名已过期');
+          if (latest.floorIndex !== Number(binding.floorIndex)) throw new Error('操作楼层已过期');
+          const latestIds = normalizeIds(latest.messageIdCandidates);
+          const bindingIds = normalizeIds(binding.messageIdCandidates);
+          if (!bindingIds.some(id => latestIds.some(latestId => String(latestId) === String(id)))) {
+            throw new Error('操作消息 ID 已过期');
+          }
+          if (lastComplete) {
+            if (lastComplete.readOnly === true) throw new Error('宿主恢复场景为只读，不会重放旧事务');
+            if (lastComplete.presentationSignature !== binding.presentationSignature
+              || lastComplete.floorIndex !== Number(binding.floorIndex)) {
+              throw new Error('宿主当前场景已变更');
+            }
+            return true;
+          }
+          if (allowOpening && openingSession && isOpeningMarker(latest.rawText)) return true;
+          throw new Error('当前没有可操作的完整场景');
+        }
+
+        function readController(method) {
+          const context = readContext();
+          const candidates = [window.MGQController, window.MGQ?.bridge, window.MGQ, context.MGQController, context.MGQ?.bridge, context.MGQ];
+          const controller = candidates.find(value => typeof value?.[method] === 'function');
+          if (!controller) throw new Error('MGQController.' + method + ' 不可用');
+          return controller;
+        }
+
+        function isAllowedPlayerSetting(key, value) {
+          if (key === 'battle_mode') return ['叙事', '卡牌', '速判'].includes(value);
+          if (key === 'route_mode') return ['正史靠拢', '局部分歧', '重大偏离', '独立世界线'].includes(value);
+          return false;
+        }
+
+        function summarizeActionResult(value) {
+          if (value && typeof value === 'object' && value.success === false) {
+            return { success: false, error: String(value.error || '操作失败') };
+          }
+          return { success: true };
+        }
+
+        function installChatLifecycle() {
+          const eventMap = [
+            ['MESSAGE_RECEIVED', 'message-received'],
+            ['MESSAGE_UPDATED', 'message-updated'],
+            ['GENERATION_ENDED', 'generation-ended'],
+            ['CHARACTER_MESSAGE_RENDERED', 'character-message-rendered'],
+            ['MESSAGE_SWIPED', 'message-swiped'],
+            ['MESSAGE_DELETED', 'message-deleted'],
+            ['CHAT_CHANGED', 'chat-changed'],
+          ];
+          const context = readContext();
+          const catalogs = [window.tavern_events, window.event_types, window.eventTypes, context.tavern_events, context.event_types, context.eventTypes];
+          const source = context.eventSource || window.eventSource;
+          for (const [key, reason] of eventMap) {
+            let name = '';
+            for (const catalog of catalogs) {
+              if (catalog && typeof catalog[key] === 'string') { name = catalog[key]; break; }
+            }
+            if (!name) continue;
+            const listener = () => {
+              if (reason === 'chat-changed') { void handleChatChanged(readChatKey()); return; }
+              if (!sessionId) return;
+              void publishLatestPresentation(reason);
+            };
+            if (typeof window.eventOn === 'function') {
+              const stop = window.eventOn(name, listener);
+              cleanups.push(typeof stop === 'function' ? stop : () => window.eventOff?.(name, listener));
+            } else if (typeof source?.on === 'function') {
+              source.on(name, listener);
+              cleanups.push(() => source.off?.(name, listener));
+            } else if (typeof source?.addEventListener === 'function') {
+              source.addEventListener(name, listener);
+              cleanups.push(() => source.removeEventListener?.(name, listener));
+            }
+          }
+          const onFullscreen = () => {
+            if (phase === 'ActiveNative' && document.fullscreenElement !== frame) {
+              phase = 'ActivePseudo';
+              mode = 'pseudo';
+              send('MODE_CHANGED', { mode });
+            }
+          };
+          document.addEventListener('fullscreenchange', onFullscreen);
+          cleanups.push(() => document.removeEventListener('fullscreenchange', onFullscreen));
+          const onVisibility = () => {
+            if (document.hidden) {
+              send('VISIBILITY_HIDDEN', { visible: false });
+              pauseHostAudio();
+            }
+            else send('VISIBILITY_RESTORED', { visible: true });
+          };
+          document.addEventListener('visibilitychange', onVisibility);
+          cleanups.push(() => document.removeEventListener('visibilitychange', onVisibility));
+
+          const onEscape = event => {
+            if (event.key !== 'Escape' || !sessionId) return;
+            event.preventDefault();
+            void handleBackAction('escape');
+          };
+          window.addEventListener('keydown', onEscape, true);
+          cleanups.push(() => window.removeEventListener('keydown', onEscape, true));
+          const onPopState = () => {
+            if (ignoredGuardPops > 0) {
+              ignoredGuardPops -= 1;
+              return;
+            }
+            if (!sessionId) return;
+            historyGuardArmed = false;
+            historyGuardToken = '';
+            void Promise.resolve(handleBackAction('popstate')).finally(() => {
+              if (sessionId) armBackGuard();
+            });
+          };
+          window.addEventListener('popstate', onPopState);
+          cleanups.push(() => window.removeEventListener('popstate', onPopState));
+        }
+
+        async function handleBackAction(source) {
+          if (!sessionId || readChatKey() !== chatKey) return false;
+          if (phase === 'ActiveNative') {
+            await exitNative();
+            phase = 'ActivePseudo';
+            mode = 'pseudo';
+            send('MODE_CHANGED', { mode, reason: 'android-back-native-exit' });
+            return true;
+          }
+          if (phase !== 'ActivePseudo') return false;
+          send('ANDROID_BACK_REQUEST', { source: String(source || 'host-action') });
+          return true;
+        }
+
+        function armBackGuard() {
+          if (!sessionId || historyGuardArmed) return false;
+          try {
+            const token = sessionId + ':' + epoch;
+            const currentState = history.state && typeof history.state === 'object' ? history.state : {};
+            history.pushState({ ...currentState, __mgqImmersiveGuard: token }, '', location.href);
+            historyGuardToken = token;
+            historyGuardArmed = true;
+            return true;
+          } catch (_) {
+            historyGuardToken = '';
+            historyGuardArmed = false;
+            return false;
+          }
+        }
+
+        function disarmBackGuard() {
+          const token = historyGuardToken;
+          historyGuardToken = '';
+          historyGuardArmed = false;
+          try {
+            if (token && history.state?.__mgqImmersiveGuard === token) {
+              ignoredGuardPops += 1;
+              history.back();
+            }
+          } catch (_) {}
+        }
+
+        function readContext() {
+          const st = window.SillyTavern;
+          try { return typeof st?.getContext === 'function' ? st.getContext.call(st) || {} : {}; } catch (_) { return {}; }
+        }
+
+        function readChatKey() {
+          const context = readContext();
+          const first = values => {
+            for (const value of values) if (value !== null && value !== undefined && String(value).trim()) return String(value).trim();
+            return '';
+          };
+          const chat = first([context.chatId, context.chat_id, context.selectedChat, context.selected_chat]);
+          const character = first([context.characterId, context.character_id, context.this_chid]);
+          return chat && character ? character + '::' + chat : chat || character || 'unknown-chat';
+        }
+
+        function readLatestAssistant() {
+          const context = readContext();
+          const chat = Array.isArray(context.chat) ? context.chat : [];
+          for (let index = chat.length - 1; index >= 0; index -= 1) {
+            const record = chat[index];
+            if (!record || record.is_user === true || record.is_system === true || record.role === 'user' || record.role === 'system') continue;
+            const rawText = String(record.mes ?? record.message ?? '');
+            const messageIdCandidates = normalizeIds([record.mesid, record.id, index, record.message_id]);
+            return {
+              chatKey: readChatKey(),
+              floorIndex: index,
+              messageId: messageIdCandidates[0] ?? index,
+              messageIdCandidates,
+              rawText,
+              presentationSignature: signature(rawText),
+            };
+          }
+          return null;
+        }
+
+        async function publishLatestPresentation(reason) {
+          const latest = readLatestAssistant();
+          if (!latest && reason === 'message-deleted') {
+            compatibilityReason = '';
+            return clearPresentation(reason);
+          }
+          const value = await readControllerPresentation(latest, reason);
+          if (!value) {
+            compatibilityReason = 'controller-unavailable-read-only';
+            return false;
+          }
+          compatibilityReason = '';
+          return present(value);
+        }
+
+        async function readControllerPresentation(snapshot, reason) {
+          if (!snapshot) return null;
+          const context = readContext();
+          const candidates = [window.MGQController, window.MGQ, context.MGQController, context.MGQ];
+          const controller = candidates.find(value => typeof value?.getMessagePresentation === 'function');
+          if (!controller) return null;
+          const request = {
+            messageId: snapshot.messageId,
+            messageIdCandidates: snapshot.messageIdCandidates,
+            floorIndex: snapshot.floorIndex,
+            chatKey: snapshot.chatKey,
+            presentationSignature: snapshot.presentationSignature,
+            reason,
+          };
+          try {
+            const value = await Promise.resolve(controller.getMessagePresentation(request));
+            if (!value || value.protocol !== config.presentationProtocol) return null;
+            return { ...value, reason };
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function signature(text) {
+          const visible = normalizedSignatureSource(String(text || ''));
+          let hash = 0x811c9dc5;
+          for (let index = 0; index < visible.length; index += 1) {
+            hash ^= visible.charCodeAt(index);
+            hash = Math.imul(hash, 0x01000193) >>> 0;
+          }
+          return 'v1:' + hash.toString(16).padStart(8, '0') + ':' + visible.length;
+        }
+
+        function normalizedSignatureSource(rawText) {
+          const envelopeMatches = rawText.match(/<MGQ_MESSAGE\b[^>]*>[\s\S]*?<\/MGQ_MESSAGE>/gi);
+          if (envelopeMatches?.length) {
+            return normalizedSignatureWhitespace(envelopeMatches[envelopeMatches.length - 1] || '');
+          }
+          const withoutRuntimeSidecars = rawText
+            .replace(/<(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)\b[^>]*>[\s\S]*?<\/(?:UpdateVariable|VariableCheck|thinking|draft_notes|meow_FM)>/gi, '')
+            .replace(/<StatusPlaceHolderImpl\s*\/?>/gi, '')
+            .trim();
+          try {
+            const parsed = JSON.parse(withoutRuntimeSidecars);
+            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+              && Object.prototype.hasOwnProperty.call(parsed, '_mgq_runtime')) {
+              const visible = { ...parsed };
+              delete visible._mgq_runtime;
+              return normalizedSignatureWhitespace(JSON.stringify(visible));
+            }
+          } catch (_) {}
+          return normalizedSignatureWhitespace(withoutRuntimeSidecars);
+        }
+
+        function normalizedSignatureWhitespace(value) {
+          return String(value || '').replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').trim();
+        }
+
+        function isOpeningMarker(value) {
+          return String(value || '').trim() === '[MGQ_OPENING_UI]';
+        }
+
+        function detachedClone(value) {
+          if (value === null || value === undefined) return value;
+          try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+          catch (_) { return JSON.parse(JSON.stringify(value)); }
+        }
+
+        function createHostDocument(release) {
+          const settings = JSON.stringify({
+            protocol: config.immersiveProtocol,
+            presentationProtocol: config.presentationProtocol,
+            statusProtocol: config.statusProtocol,
+            buildId: release.buildId,
+            baseUrl: release.baseUrl,
+            baseUrls: release.baseUrls,
+            bgmProtocol: release.bgmProtocol,
+            bgmBasePath: release.bgmBasePath,
+            bgmBaseUrls: release.bgmBaseUrls,
+            files: release.files,
+            trustBoundary: 'trusted-hash-pinned-release/v1',
+          }).replace(/</g, '\\u003c');
+          const boot = '(' + hostFrameBoot.toString() + ')(' + settings + ');';
+          const baseHref = String(release.baseUrl || '')
+            .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+          return '<!doctype html><html lang="zh-CN" style="'
+            + '--vn-safe-top:max(env(safe-area-inset-top,0px),var(--tt-inset-top,0px));'
+            + '--vn-safe-right:max(env(safe-area-inset-right,0px),var(--tt-inset-right,0px));'
+            + '--vn-safe-bottom:max(env(safe-area-inset-bottom,0px),var(--tt-inset-bottom,0px));'
+            + '--vn-safe-left:max(env(safe-area-inset-left,0px),var(--tt-inset-left,0px));'
+            + '"><head><meta charset="utf-8"><base href="' + baseHref + '">'
+            + '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+            + '<style>html,body,#app{margin:0;width:100%;height:var(--tt-base-viewport-height,100dvh);background:#07050d;color:#eadfc9;overflow:hidden}'
+            + '.mgq-host-boot{position:fixed;inset:0;display:grid;place-items:center;font:14px sans-serif;color:#c8ae7a}'
+            + '.mgq-host-return{position:fixed;z-index:2147483600;top:max(8px,var(--vn-safe-top));left:max(8px,var(--vn-safe-left));min-width:44px;min-height:44px;border:1px solid #a47d43;background:#1d1224;color:#f3e5ca}'
+            + '.mgq-host-return.is-surface-owned{display:none}'
+            + '.mgq-host-confirm[hidden]{display:none}.mgq-host-confirm{position:fixed;z-index:2147483640;inset:0;display:grid;place-items:center;box-sizing:border-box;padding:calc(var(--vn-safe-top) + 18px) calc(var(--vn-safe-right) + 18px) calc(var(--vn-safe-bottom) + 18px) calc(var(--vn-safe-left) + 18px);background:rgba(4,3,12,.8);font-family:"Noto Sans SC","Microsoft YaHei",sans-serif}'
+            + '.mgq-host-confirm>section{width:min(430px,100%);box-sizing:border-box;padding:28px 30px 24px;border:1px solid rgba(211,168,91,.56);background:linear-gradient(135deg,rgba(104,41,82,.18),transparent 52%),#0e0b22;color:#f6f2ff;text-align:center;box-shadow:0 28px 80px rgba(0,0,0,.62)}'
+            + '.mgq-host-confirm small{color:rgba(232,207,138,.78);font-size:10px;font-weight:700;letter-spacing:.17em}.mgq-host-confirm h2{margin:9px 0 12px;font:600 24px/1.25 "Noto Serif SC","SimSun",serif}.mgq-host-confirm p{margin:0;color:#ccd0e4;font-size:13px;line-height:1.8}.mgq-host-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}.mgq-host-confirm button{min-width:44px;min-height:44px;border:1px solid rgba(174,151,214,.28);border-radius:2px;background:#130f2d;color:#ddd5e8;font-weight:600}.mgq-host-confirm button[data-action="confirm"]{border-color:rgba(232,87,155,.62);background:#63284f;color:#fff4fa}.mgq-host-confirm button:focus-visible{outline:2px solid #ffc9e4;outline-offset:2px}'
+            + '</style></head><body><div id="app"><div class="mgq-host-boot">正在连接沉浸舞台…</div></div>'
+            + '<button class="mgq-host-return" type="button" aria-label="返回酒馆">返回酒馆</button>'
+            + '<div class="mgq-host-confirm" hidden role="presentation"><section role="alertdialog" aria-modal="true" aria-labelledby="mgq-host-confirm-title" aria-describedby="mgq-host-confirm-detail"><small>LEAVE IMMERSIVE MODE</small><h2 id="mgq-host-confirm-title">返回酒馆？</h2><p id="mgq-host-confirm-detail">当前场景会保留在聊天记录中。</p><div class="mgq-host-confirm-actions"><button type="button" data-action="cancel">继续游戏</button><button type="button" data-action="confirm">确认返回</button></div></section></div>'
+            + '<scr' + 'ipt>' + boot + '</scr' + 'ipt></body></html>';
+        }
+
+        function hostFrameBoot(settings) {
+          const listeners = new Set();
+          const fullscreenRequests = new Map();
+          const settingRequests = new Map();
+          const actionRequests = new Map();
+          const backHandlers = new Set();
+          let port = null;
+          let sessionId = '';
+          let epoch = 0;
+          let chatKey = '';
+          let inboundSeq = 0;
+          let outboundSeq = 0;
+          let current = null;
+          let currentPublicState = null;
+          let assetsLoaded = false;
+          let fullscreenRequestSequence = 0;
+          let settingRequestSequence = 0;
+          let actionRequestSequence = 0;
+          let backHandlerSequence = 0;
+          let hostErrorSent = false;
+          let openingBinding = null;
+          let returnConfirmation = null;
+          const immutableBgmBaseUrls = Object.freeze(
+            (Array.isArray(settings.bgmBaseUrls) ? settings.bgmBaseUrls : [])
+              .map(value => String(value || '').trim())
+              .filter(value => /^https:\/\//i.test(value)),
+          );
+          window.__MGQ_BGM_BASE_URLS__ = immutableBgmBaseUrls;
+          window.__MGQ_BGM_BASE_URL__ = immutableBgmBaseUrls[0] || '';
+          window.__MGQ_IMMERSIVE_HOST_CONTEXT__ = Object.freeze({
+            protocol: settings.protocol,
+            presentationProtocol: settings.presentationProtocol,
+            statusProtocol: settings.statusProtocol,
+            buildId: settings.buildId,
+            trustBoundary: settings.trustBoundary,
+          });
+          window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__ = {
+            getCurrent: () => current,
+            getPublicState: () => currentPublicState,
+            subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
+            requestExit(reason) { send('RETURN_TO_TAVERN_REQUEST', { reason: reason || 'return-to-tavern' }); },
+            requestNativeFullscreen() {
+              const requestId = 'native-' + (++fullscreenRequestSequence);
+              return new Promise(resolve => {
+                const timeout = setTimeout(() => {
+                  fullscreenRequests.delete(requestId);
+                  resolve(false);
+                }, 1800);
+                fullscreenRequests.set(requestId, { resolve, timeout });
+                send('NATIVE_FULLSCREEN_REQUEST', { requestId });
+              });
+            },
+            updatePlayerSetting(key, value) {
+              const requestId = 'setting-' + (++settingRequestSequence);
+              return requestWithTimeout(settingRequests, requestId, 'PLAYER_SETTING_UPDATE_REQUEST', {
+                requestId,
+                key,
+                value,
+                binding: currentBinding(),
+              }, 4000).then(result => result?.ok === true);
+            },
+            requestAction(action, payload) {
+              const requestId = 'action-' + (++actionRequestSequence);
+              return requestWithTimeout(actionRequests, requestId, 'ACTION_REQUEST', {
+                requestId,
+                action,
+                payload,
+                binding: currentBinding(),
+              }, actionRequestTimeoutMs(action)).then(result => {
+                if (result?.ok === true) return result.result;
+                throw new Error(String(result?.error || '宿主操作失败'));
+              });
+            },
+            registerBackHandler(handler, priority) {
+              if (typeof handler !== 'function') return () => {};
+              const record = { handler, priority: Number(priority) || 0, order: ++backHandlerSequence };
+              backHandlers.add(record);
+              return () => backHandlers.delete(record);
+            },
+          };
+          copyApis();
+          window.addEventListener('message', event => {
+            if (event.source !== window.parent || event.data?.protocol !== settings.protocol || event.data?.type !== 'MGQ_HOST_CONNECT') return;
+            const nextPort = event.ports?.[0];
+            if (!nextPort) return;
+            if (port && nextPort !== port) {
+              rejectPendingRequests(settingRequests, '宿主连接已更新');
+              rejectPendingRequests(actionRequests, '宿主连接已更新');
+            }
+            port?.close?.();
+            port = nextPort;
+            port.onmessage = onPacket;
+            port.start?.();
+          });
+          const fallbackReturnButton = document.querySelector('.mgq-host-return');
+          const returnConfirmLayer = document.querySelector('.mgq-host-confirm');
+          const returnConfirmAccept = returnConfirmLayer?.querySelector('[data-action="confirm"]');
+          const returnConfirmCancel = returnConfirmLayer?.querySelector('[data-action="cancel"]');
+          returnConfirmAccept?.addEventListener('click', () => settleReturnConfirmation(true));
+          returnConfirmCancel?.addEventListener('click', () => settleReturnConfirmation(false));
+          returnConfirmLayer?.addEventListener('click', event => {
+            if (event.target === returnConfirmLayer) settleReturnConfirmation(false);
+          });
+          fallbackReturnButton?.addEventListener('click', async () => {
+            if (await requestReturnConfirmation()) {
+              send('RETURN_TO_TAVERN_REQUEST', { reason: 'return-to-tavern' });
+            }
+          });
+          window.addEventListener('mgq:immersive-return-surface', event => {
+            fallbackReturnButton?.classList.toggle(
+              'is-surface-owned',
+              event?.detail?.active === true,
+            );
+          });
+          document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement) send('NATIVE_FULLSCREEN_EXITED', {});
+          });
+          window.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || !sessionId) return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (returnConfirmation) {
+              settleReturnConfirmation(false);
+              return;
+            }
+            send('BACK_ACTION_REQUEST', { source: 'host-escape' });
+          }, true);
+          window.addEventListener('error', event => {
+            const target = event.target;
+            if (target instanceof HTMLScriptElement || target instanceof HTMLLinkElement) return;
+            reportHostFailure(event.error?.message || event.message || '沉浸舞台运行时错误');
+          });
+          window.addEventListener('unhandledrejection', event => {
+            reportHostFailure(event.reason?.message || event.reason || '沉浸舞台出现未处理异常');
+          });
+
+          function onPacket(event) {
+            if (!port || (event?.target && event.target !== port)) return;
+            const packet = event?.data;
+            if (!packet || packet.protocol !== settings.protocol || !Number.isInteger(packet.seq)) return;
+            if (packet.type === 'SESSION_ENTER') {
+              const sameSession = packet.sessionId === sessionId
+                && packet.epoch === epoch
+                && packet.chatKey === chatKey;
+              if (sameSession && packet.seq <= inboundSeq) return;
+              if (!Number.isInteger(packet.epoch) || packet.epoch < epoch) return;
+              if (!sameSession) rejectPendingRequests(actionRequests, '会话已切换');
+              if (!sameSession) rejectPendingRequests(settingRequests, '会话已切换');
+              sessionId = packet.sessionId;
+              epoch = packet.epoch;
+              chatKey = packet.chatKey;
+              inboundSeq = packet.seq;
+              outboundSeq = 0;
+              current = null;
+              currentPublicState = null;
+              openingBinding = packet.payload?.opening ? packet.payload?.openingBinding || null : null;
+              hostErrorSent = false;
+              window.__MGQ_IMMERSIVE_HOST_CONTEXT__ = Object.freeze({
+                protocol: settings.protocol,
+                presentationProtocol: settings.presentationProtocol,
+                statusProtocol: settings.statusProtocol,
+                buildId: settings.buildId,
+                trustBoundary: settings.trustBoundary,
+                sessionId,
+                epoch,
+                chatKey,
+                openingBinding: openingBinding ? Object.freeze({ ...openingBinding }) : null,
+              });
+              if (packet.payload?.opening && !assetsLoaded) loadAssets();
+              send('HOST_READY', { buildId: settings.buildId });
+              return;
+            }
+            if (packet.sessionId !== sessionId || packet.epoch !== epoch || packet.chatKey !== chatKey || packet.seq <= inboundSeq) return;
+            if (![
+              'PRESENTATION_PENDING',
+              'PRESENTATION_COMPLETE',
+              'PRESENTATION_CLEARED',
+              'MODE_CHANGED',
+              'VISIBILITY_HIDDEN',
+              'VISIBILITY_RESTORED',
+              'NATIVE_FULLSCREEN_RESULT',
+              'PLAYER_SETTING_UPDATE_RESULT',
+              'ACTION_RESULT',
+              'ANDROID_BACK_REQUEST',
+            ].includes(packet.type)) return;
+            inboundSeq = packet.seq;
+            if (packet.type === 'NATIVE_FULLSCREEN_RESULT') {
+              const requestId = String(packet.payload?.requestId || '');
+              const pendingRequest = fullscreenRequests.get(requestId);
+              if (!pendingRequest) return;
+              clearTimeout(pendingRequest.timeout);
+              fullscreenRequests.delete(requestId);
+              pendingRequest.resolve(packet.payload?.ok === true);
+            } else if (packet.type === 'PLAYER_SETTING_UPDATE_RESULT') {
+              resolveRequest(settingRequests, packet.payload);
+              if (packet.payload?.ok === true && packet.payload?.publicState?.protocol === 'mgq-public-state/v2' && current) {
+                current = Object.freeze({ ...current, publicState: packet.payload.publicState });
+              }
+              if (packet.payload?.ok === true && packet.payload?.publicState?.protocol === 'mgq-public-state/v2') {
+                currentPublicState = Object.freeze({ ...packet.payload.publicState });
+                notifyPresentationListeners('message-updated');
+              }
+            } else if (packet.type === 'ACTION_RESULT') {
+              resolveRequest(actionRequests, packet.payload);
+            } else if (packet.type === 'ANDROID_BACK_REQUEST') {
+              void handleAndroidBack(packet.payload);
+            } else if (packet.type === 'VISIBILITY_HIDDEN' || packet.type === 'VISIBILITY_RESTORED') {
+              const broker = window.__MGQ_BGM_OWNER_BROKER_V1__?.broker;
+              void broker?.setHidden?.(packet.type === 'VISIBILITY_HIDDEN');
+            } else if (packet.type === 'PRESENTATION_CLEARED') {
+              current = null;
+              currentPublicState = null;
+              openingBinding = null;
+              window.__MGQ_MESSAGE_CONTEXT__ = Object.freeze({
+                kind: 'empty',
+                chatId: chatKey,
+                reason: String(packet.payload?.reason || 'message-deleted'),
+              });
+              notifyPresentationListeners('message-deleted', null, true);
+            } else if (packet.type === 'PRESENTATION_PENDING' || packet.type === 'PRESENTATION_COMPLETE') {
+              const value = packet.payload || {};
+              const snapshot = {
+                chatId: value.chatKey,
+                floorIndex: value.floorIndex,
+                idCandidates: value.messageIdCandidates,
+                presentationSignature: value.presentationSignature,
+                rawText: value.rawText || '',
+              };
+              if (packet.type === 'PRESENTATION_COMPLETE') {
+                current = Object.freeze({ ...value });
+                currentPublicState = value.publicState?.protocol === 'mgq-public-state/v2'
+                  ? Object.freeze({ ...value.publicState })
+                  : null;
+                openingBinding = null;
+                window.__MGQ_IMMERSIVE_HOST_CONTEXT__ = Object.freeze({
+                  protocol: settings.protocol,
+                  presentationProtocol: settings.presentationProtocol,
+                  statusProtocol: settings.statusProtocol,
+                  buildId: settings.buildId,
+                  trustBoundary: settings.trustBoundary,
+                  sessionId,
+                  epoch,
+                  chatKey,
+                  openingBinding: null,
+                });
+                window.__MGQ_MESSAGE_CONTEXT__ = Object.freeze({
+                  kind: 'message',
+                  messageId: snapshot.idCandidates?.[0] ?? snapshot.floorIndex,
+                  chatId: snapshot.chatId,
+                  floorIndex: snapshot.floorIndex,
+                  idCandidates: snapshot.idCandidates,
+                  presentationSignature: snapshot.presentationSignature,
+                  rawText: snapshot.rawText,
+                  isLatest: value.readOnly !== true,
+                });
+                if (!assetsLoaded) loadAssets();
+              }
+              const reason = packet.type === 'PRESENTATION_PENDING' ? 'message-updated' : (value.reason || 'message-received');
+              notifyPresentationListeners(reason, snapshot);
+            }
+          }
+
+          function notifyPresentationListeners(reason, snapshot = current || openingBinding, allowEmpty = false) {
+            if (!snapshot && !allowEmpty) return;
+            for (const listener of listeners) { try { listener(snapshot, reason); } catch (_) {} }
+          }
+
+          function send(type, payload) {
+            if (!port || !sessionId || !chatKey) return;
+            port.postMessage({ protocol: settings.protocol, sessionId, epoch, seq: ++outboundSeq, chatKey, type, payload });
+          }
+
+          function currentBinding() {
+            const value = current || openingBinding;
+            if (!value) return null;
+            return {
+              floorIndex: Number(value.floorIndex),
+              messageIdCandidates: Array.isArray(value.messageIdCandidates)
+                ? [...value.messageIdCandidates]
+                : Array.isArray(value.idCandidates) ? [...value.idCandidates] : [],
+              presentationSignature: String(value.presentationSignature || ''),
+            };
+          }
+
+          function actionRequestTimeoutMs(action) {
+            return action === 'submitOpening' || action === 'submitInteractionText'
+              ? 10 * 60 * 1000
+              : 12000;
+          }
+
+          function requestWithTimeout(store, requestId, type, payload, timeoutMs) {
+            return new Promise((resolve, reject) => {
+              const timeout = setTimeout(() => {
+                store.delete(requestId);
+                reject(new Error('宿主请求超时'));
+              }, timeoutMs);
+              store.set(requestId, { resolve, reject, timeout });
+              send(type, payload);
+            });
+          }
+
+          function rejectPendingRequests(store, reason) {
+            const error = new Error(String(reason || '宿主请求已取消'));
+            for (const [requestId, request] of store) {
+              clearTimeout(request.timeout);
+              store.delete(requestId);
+              request.reject(error);
+            }
+          }
+
+          function resolveRequest(store, payload) {
+            const requestId = String(payload?.requestId || '');
+            const request = store.get(requestId);
+            if (!request) return false;
+            clearTimeout(request.timeout);
+            store.delete(requestId);
+            request.resolve(payload);
+            return true;
+          }
+
+          async function handleAndroidBack(payload) {
+            const ordered = [...backHandlers].sort((left, right) => (
+              right.priority - left.priority || right.order - left.order
+            ));
+            for (const record of ordered) {
+              try {
+                if (await record.handler()) {
+                  send('ANDROID_BACK_RESULT', { handled: 'menu-closed', source: payload?.source || '' });
+                  return;
+                }
+              } catch (_) {}
+            }
+            if (await requestReturnConfirmation()) {
+              send('RETURN_TO_TAVERN_REQUEST', { reason: 'android-back-confirmed' });
+            } else {
+              send('ANDROID_BACK_RESULT', { handled: 'cancelled', source: payload?.source || '' });
+            }
+          }
+
+          function requestReturnConfirmation() {
+            if (returnConfirmation?.promise) return returnConfirmation.promise;
+            let resolvePromise;
+            const promise = new Promise(resolve => { resolvePromise = resolve; });
+            returnConfirmation = { promise, resolve: resolvePromise };
+            if (returnConfirmLayer) returnConfirmLayer.hidden = false;
+            setTimeout(() => returnConfirmAccept?.focus?.({ preventScroll: true }), 0);
+            return promise;
+          }
+
+          function settleReturnConfirmation(confirmed) {
+            const pending = returnConfirmation;
+            if (!pending) return;
+            returnConfirmation = null;
+            if (returnConfirmLayer) returnConfirmLayer.hidden = true;
+            pending.resolve(confirmed === true);
+          }
+
+          function copyApis() {
+            const safeContext = () => {
+              const value = current || openingBinding;
+              const ids = Array.isArray(value?.messageIdCandidates)
+                ? value.messageIdCandidates
+                : Array.isArray(value?.idCandidates) ? value.idCandidates : [];
+              return Object.freeze({
+                chatId: chatKey,
+                chat_id: chatKey,
+                selectedChat: chatKey,
+                chat: value ? [Object.freeze({
+                  mesid: ids[0] ?? value.floorIndex,
+                  id: ids[0] ?? value.floorIndex,
+                  message_id: ids[0] ?? value.floorIndex,
+                  mes: String(value.rawText || ''),
+                  is_user: false,
+                  is_system: false,
+                  role: 'assistant',
+                })] : [],
+              });
+            };
+            window.SillyTavern = Object.freeze({ getContext: safeContext });
+            window.MGQController = Object.freeze({
+              getBattleCheckpoint: () => current?.battle ? detachedCopy(current.battle) : null,
+              submitOpening: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('submitOpening', payload),
+              claimInteraction: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('claimInteraction', payload),
+              commitInteraction: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('commitInteraction', payload),
+              releaseInteraction: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('releaseInteraction', payload),
+              saveBattleCheckpoint: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('saveBattleCheckpoint', payload),
+              markBattleTerminal: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('markBattleTerminal', payload),
+              confirmBattleResolution: payload => window.__MGQ_IMMERSIVE_PRESENTATION_BRIDGE__.requestAction('confirmBattleResolution', payload),
+            });
+          }
+
+          function detachedCopy(value) {
+            try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+            catch (_) { return null; }
+          }
+
+          function loadAssets() {
+            if (assetsLoaded) return;
+            assetsLoaded = true;
+            const bases = [...new Set([
+              settings.baseUrl,
+              ...(Array.isArray(settings.baseUrls) ? settings.baseUrls : []),
+            ].map(value => String(value || '').replace(/\/?$/, '/')).filter(value => /^https:\/\//i.test(value)))];
+            // SECURITY BOUNDARY: this same-origin srcdoc is a trusted-code
+            // container, not a capability sandbox. Remote release bytes must
+            // match the card-pinned SHA-256 metadata before any CSS or JS is
+            // installed into the document.
+            const bgmManifestRequest = settings.files?.['bgm-manifest.json']
+              ? fetchVerifiedAsset('bgm-manifest.json', bases)
+              : Promise.resolve(null);
+            void Promise.all([
+              fetchVerifiedAsset('mgq-v4.css', bases),
+              fetchVerifiedAsset('mgq-v4.js', bases),
+              bgmManifestRequest,
+            ]).then(([styleBytes, scriptBytes, bgmManifestBytes]) => {
+              installVerifiedAssets(styleBytes, scriptBytes, bgmManifestBytes);
+            }).catch(error => {
+              assetsLoaded = false;
+              showError('正式前端资源校验失败：' + String(error?.message || error || 'unknown'));
+            });
+          }
+
+          async function fetchVerifiedAsset(name, bases) {
+            const metadata = settings.files?.[name];
+            if (!metadata || !/^[0-9a-f]{64}$/i.test(String(metadata.sha256 || ''))
+              || !Number.isSafeInteger(Number(metadata.size)) || Number(metadata.size) <= 0) {
+              throw new Error(name + ' metadata invalid');
+            }
+            if (!crypto?.subtle?.digest) throw new Error('Web Crypto SHA-256 unavailable');
+            let lastError = null;
+            for (const base of bases) {
+              try {
+                const response = await fetch(base + name, { cache: 'force-cache' });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const bytes = await response.arrayBuffer();
+                if (bytes.byteLength !== Number(metadata.size)) {
+                  throw new Error(name + ' size mismatch');
+                }
+                const digest = await crypto.subtle.digest('SHA-256', bytes);
+                const actual = [...new Uint8Array(digest)]
+                  .map(value => value.toString(16).padStart(2, '0')).join('');
+                if (actual !== String(metadata.sha256).toLowerCase()) {
+                  throw new Error(name + ' SHA-256 hash mismatch');
+                }
+                return bytes;
+              } catch (error) {
+                lastError = error;
+              }
+            }
+            throw new Error(name + ' verification failed: ' + String(lastError?.message || lastError || 'no mirror'));
+          }
+
+          function installVerifiedAssets(styleBytes, scriptBytes, bgmManifestBytes) {
+            const decoder = new TextDecoder('utf-8', { fatal: true });
+            if (bgmManifestBytes) {
+              const bgmManifest = JSON.parse(decoder.decode(bgmManifestBytes));
+              if (bgmManifest?.schema !== settings.bgmProtocol
+                || !bgmManifest.files
+                || typeof bgmManifest.files !== 'object'
+                || Array.isArray(bgmManifest.files)) {
+                throw new Error('bgm-manifest.json contract invalid');
+              }
+              window.__MGQ_BGM_RELEASE_MANIFEST__ = Object.freeze(bgmManifest);
+            }
+            const style = document.createElement('style');
+            style.dataset.mgqVerifiedRelease = settings.buildId;
+            style.textContent = decoder.decode(styleBytes);
+            const script = document.createElement('script');
+            script.dataset.mgqVerifiedRelease = settings.buildId;
+            script.textContent = decoder.decode(scriptBytes);
+            document.head.appendChild(style);
+            document.head.appendChild(script);
+          }
+
+          function showError(message) {
+            const root = document.getElementById('app');
+            if (root) root.textContent = message + '。请返回酒馆后重试。';
+            reportHostFailure(message);
+          }
+
+          function reportHostFailure(message) {
+            if (hostErrorSent) return;
+            hostErrorSent = true;
+            send('HOST_ERROR', { message: String(message || 'host-error') });
+          }
+        }
+
+        async function recoverHostOnce(reason) {
+          if (recovering || !sessionId || !chatKey) return false;
+          if (recoveryUsed) {
+            const exhaustedRevision = ++lifecycleRevision;
+            await failHostRecovery(reason, exhaustedRevision);
+            return false;
+          }
+          const recoveryRevision = ++lifecycleRevision;
+          if (!lastComplete) {
+            recoveryUsed = true;
+            await failHostRecovery(
+              'host-recovery-requires-last-complete: ' + String(reason || 'unknown'),
+              recoveryRevision,
+            );
+            return false;
+          }
+          recoveryUsed = true;
+          recovering = true;
+          const savedSessionId = sessionId;
+          const savedChatKey = chatKey;
+          const recoveredPresentation = Object.freeze({
+            ...detachedClone(lastComplete),
+            generation: 'complete',
+            options: [],
+            battle: null,
+            readOnly: true,
+            recovered: true,
+            reason: 'host-recovery-read-only',
+          });
+          pauseHostAudio();
+          abortController.abort();
+          abortController = new AbortController();
+          closeTransport();
+          const nativeFrame = frame;
+          resetFrame('host-recovery');
+          epoch += 1;
+          outboundSeq = 0;
+          inboundSeq = 0;
+          pending = null;
+          handledActionRequestIds.clear();
+          try {
+            await exitNative(nativeFrame);
+            assertLifecycle(recoveryRevision);
+            await ensureHost(savedChatKey, recoveryRevision);
+            assertLifecycle(recoveryRevision);
+            sessionId = savedSessionId;
+            chatKey = savedChatKey;
+            phase = 'ActivePseudo';
+            mode = 'pseudo';
+            openingSession = false;
+            openingAnchor = null;
+            frame.style.display = 'block';
+            send('SESSION_ENTER', {
+              mode,
+              recovery: true,
+              readOnly: true,
+              opening: openingSession,
+              openingBinding: openingAnchor,
+            });
+            lastComplete = recoveredPresentation;
+            highestFloor = recoveredPresentation.floorIndex;
+            send('PRESENTATION_COMPLETE', recoveredPresentation);
+            compatibilityReason = 'host-recovered-read-only';
+            return true;
+          } catch (error) {
+            if (isLifecycleCurrent(recoveryRevision)) {
+              await failHostRecovery(error?.message || reason, recoveryRevision);
+            }
+            return false;
+          } finally {
+            if (lifecycleRevision === recoveryRevision) recovering = false;
+          }
+        }
+
+        async function failHostRecovery(reason, expectedRevision = lifecycleRevision) {
+          if (destroyed || lifecycleRevision !== expectedRevision) return;
+          terminalHostError = 'host-recovery-exhausted: ' + String(reason || 'unknown');
+          epoch += 1;
+          pauseHostAudio();
+          abortController.abort();
+          abortController = new AbortController();
+          closeTransport();
+          const nativeFrame = frame;
+          resetFrame('host-recovery-failed');
+          disarmBackGuard();
+          unlockScroll();
+          lastComplete = null;
+          pending = null;
+          highestFloor = -1;
+          openingSession = false;
+          openingAnchor = null;
+          sessionId = '';
+          chatKey = '';
+          phase = 'Dormant';
+          mode = null;
+          showParentHostError(terminalHostError);
+          await exitNative(nativeFrame);
+        }
+
+        function showParentHostError(message) {
+          const old = document.querySelector('[data-mgq-host-terminal-error]');
+          old?.remove?.();
+          const panel = document.createElement('div');
+          panel.dataset.mgqHostTerminalError = 'true';
+          panel.style.cssText = 'position:fixed;z-index:2147483640;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,620px);padding:12px 48px 12px 14px;border:1px solid #b98a55;background:#211521;color:#f2dfc7;font:13px/1.6 sans-serif;';
+          panel.textContent = '沉浸舞台连续加载失败，已安全返回酒馆。' + String(message || '');
+          const close = document.createElement('button');
+          close.type = 'button';
+          close.textContent = '关闭';
+          close.style.cssText = 'position:absolute;right:6px;top:6px;min-width:44px;min-height:44px;';
+          close.addEventListener('click', () => panel.remove());
+          panel.appendChild(close);
+          document.body.appendChild(panel);
+        }
+
+        function pauseHostAudio() {
+          try {
+            for (const audio of frame?.contentDocument?.querySelectorAll?.('audio') || []) {
+              audio.pause?.();
+            }
+          } catch (_) {}
+        }
+
+        function suppressLegacyParentAudio() {
+          const selector = '.global-bgm-control audio, audio[data-mgq-bgm-owner], audio[data-mgq-bgm], audio[data-mgq-audio]';
+          const stopIn = root => {
+            try {
+              for (const audio of root?.querySelectorAll?.(selector) || []) {
+                audio.pause?.();
+                audio.muted = true;
+              }
+            } catch (_) {}
+          };
+          stopIn(document);
+          for (const candidate of document.querySelectorAll?.('iframe') || []) {
+            if (candidate === frame) continue;
+            try {
+              stopIn(candidate.contentDocument);
+              guardLegacyDocument(candidate.contentDocument, stopIn);
+            } catch (_) {}
+          }
+        }
+
+        function guardLegacyDocument(targetDocument, stopIn) {
+          if (!targetDocument?.documentElement || guardedLegacyDocuments.has(targetDocument)) return;
+          try {
+            if (targetDocument.querySelector?.('[data-mgq-history-floor]')) return;
+          } catch (_) {}
+          guardedLegacyDocuments.add(targetDocument);
+          try {
+            const Observer = targetDocument.defaultView?.MutationObserver || window.MutationObserver;
+            if (typeof Observer !== 'function') return;
+            const observer = new Observer(records => {
+              const hasAddition = records.some(record => record.addedNodes?.length);
+              if (hasAddition) stopIn(targetDocument);
+            });
+            observer.observe(targetDocument.documentElement, { childList: true, subtree: true });
+            legacyAudioObservers.add(observer);
+          } catch (_) {}
+        }
+
+        function installLegacyAudioGuard() {
+          if (typeof MutationObserver === 'function' && document.documentElement) {
+            const observer = new MutationObserver(records => {
+              const shouldScan = records.some(record => [...(record.addedNodes || [])].some(node => {
+                if (node?.nodeType !== 1) return false;
+                try {
+                  return node.matches?.('iframe, audio, .global-bgm-control')
+                    || Boolean(node.querySelector?.('iframe, audio, .global-bgm-control'));
+                } catch (_) { return false; }
+              }));
+              if (shouldScan) suppressLegacyParentAudio();
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+            cleanups.push(() => observer.disconnect());
+          }
+          const onLoad = event => {
+            if (event.target?.tagName === 'IFRAME' && event.target !== frame) suppressLegacyParentAudio();
+          };
+          document.addEventListener('load', onLoad, true);
+          cleanups.push(() => {
+            document.removeEventListener('load', onLoad, true);
+            for (const observer of legacyAudioObservers) observer.disconnect?.();
+            legacyAudioObservers.clear();
+          });
+        }
+
+        function closeTransport() {
+          try { port?.close?.(); } catch (_) {}
+          port = null;
+          hostSource = null;
+        }
+
+        function resetFrame(reason = 'host-frame-reset') {
+          const cancelBoot = bootCancel;
+          bootCancel = null;
+          bootPromise = null;
+          bootRevision = -1;
+          try { cancelBoot?.(reason); } catch (_) {}
+          closeTransport();
+          try { frame?.remove?.(); } catch (_) {}
+          frame = null;
+        }
+
+        async function exitNative(targetFrame = frame) {
+          try { if (targetFrame && document.fullscreenElement === targetFrame) await document.exitFullscreen(); } catch (_) {}
+        }
+
+        function lifecycleError(reason) {
+          const error = new Error('host lifecycle invalidated: ' + String(reason || 'unknown'));
+          error.name = 'AbortError';
+          return error;
+        }
+
+        function isLifecycleCurrent(revision) {
+          return !destroyed && Number(revision) === lifecycleRevision;
+        }
+
+        function assertLifecycle(revision) {
+          if (!isLifecycleCurrent(revision)) throw lifecycleError(destroyed ? 'host-destroyed' : 'superseded');
+        }
+
+        function lockScroll() {
+          previousHtmlOverflow = document.documentElement.style.overflow;
+          previousBodyOverflow = document.body.style.overflow;
+          document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
+        }
+
+        function unlockScroll() {
+          document.documentElement.style.overflow = previousHtmlOverflow;
+          document.body.style.overflow = previousBodyOverflow;
+        }
+
+        function capabilities() {
+          return {
+            protocol: config.immersiveProtocol,
+            presentationProtocol: config.presentationProtocol,
+            statusProtocol: config.statusProtocol,
+            persistent: true,
+            sameOrigin: true,
+            nativeFullscreen: !isIos(),
+            buildId: activeRelease?.buildId || '',
+          };
+        }
+
+        function getState() {
+          return { protocol: config.immersiveProtocol, presentationProtocol: config.presentationProtocol, statusProtocol: config.statusProtocol, phase, mode, sessionId, epoch, chatKey, lastComplete, pending, release: activeRelease, compatibilityReason };
+        }
+
+        function isIos() {
+          return /iPad|iPhone|iPod/i.test(navigator.userAgent) || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+        }
+
+        function normalizeIds(values) {
+          const result = [];
+          for (const candidate of Array.isArray(values) ? values : []) {
+            if (candidate === null || candidate === undefined || candidate === '') continue;
+            const number = Number(candidate);
+            const value = Number.isInteger(number) && number >= 0 ? number : String(candidate).trim();
+            if (value !== '' && !result.some(item => String(item) === String(value))) result.push(value);
+          }
+          return result;
+        }
+      } catch (error) {
+        notify(false, error?.message || error);
+      }
+    }
+
+    expand.addEventListener('click', () => {
+      const open = floor.classList.toggle('is-expanded');
+      expand.textContent = open ? '收起原文' : '展开原文';
+      announceHeight();
+    });
+    inspect.addEventListener('click', () => {
+      floor.classList.add('is-expanded');
+      expand.textContent = '收起原文';
+      showNote('正在查看本楼不可变快照；继续游戏会进入最新可操作楼层。');
+    });
+    continueButton.addEventListener('click', async () => {
+      if (!messageContext) return;
+      continueButton.disabled = true;
+      showNote('正在打开常驻沉浸舞台…');
+      try {
+        await enterPersistentHost(messageContext, 'auto');
+        showNote('沉浸舞台已打开；后续回复会继续显示在同一舞台中。');
+      } catch (error) {
+        showNote(error?.message || '沉浸舞台启动失败');
+      } finally {
+        continueButton.disabled = false;
+      }
+    });
+
+    new ResizeObserver(announceHeight).observe(document.documentElement);
+    buildMessageContext().then(context => {
+      messageContext = context;
+      globalThis.__MGQ_MESSAGE_CONTEXT__ = context;
+      if (shouldAutoEnterOpening(context)) {
+        void autoEnterOpening(context);
+      } else {
+        renderHistory(context);
+        void prewarmPersistentHost(context);
+      }
+    }).catch(error => {
+      state.textContent = '只读兼容';
+      excerpt.textContent = error?.message || '无法读取本楼消息。';
+      continueButton.disabled = true;
+      announceHeight();
+    });
+  })();
+  </script>
+</body>
+</html>

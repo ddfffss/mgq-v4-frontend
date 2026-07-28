@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>勇战 ADV</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root { color-scheme: dark; }
+    html, body { width: 100%; min-height: 100%; margin: 0; background: #080611; color: #e7dac4; }
+    body { min-height: 100dvh; font-family: "Noto Serif SC", "Source Han Serif SC", SimSun, serif; }
+    #app { min-height: 100dvh; }
+    .loader {
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: max(24px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+      background:
+        radial-gradient(circle at 50% 18%, rgba(104, 53, 95, .32), transparent 29rem),
+        linear-gradient(160deg, #171021, #080611 68%);
+    }
+    .loader-card {
+      width: min(520px, 100%);
+      padding: clamp(24px, 6vw, 38px);
+      text-align: center;
+      border: 1px solid rgba(197, 157, 83, .46);
+      border-radius: 4px;
+      background: rgba(17, 12, 25, .94);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 244, 224, .04);
+    }
+    .loader-kicker { margin: 0 0 10px; color: #c6a15e; font: 700 11px/1.4 ui-sans-serif, sans-serif; letter-spacing: .18em; }
+    .loader-title { margin: 0 0 14px; color: #f2e7d2; font-size: clamp(21px, 6vw, 28px); font-weight: 600; }
+    .loader-status { margin: 0; color: #ad9eaa; font: 14px/1.8 ui-sans-serif, sans-serif; }
+    .loader-retry {
+      display: none;
+      min-width: 112px;
+      min-height: 44px;
+      margin: 20px auto 0;
+      padding: 9px 20px;
+      cursor: pointer;
+      border: 1px solid #c6a15e;
+      border-radius: 3px;
+      background: #5d294f;
+      color: #fff4e2;
+      font: 700 14px/1.3 ui-sans-serif, sans-serif;
+    }
+    .loader.error .loader-retry { display: inline-block; }
+    .loader-retry:focus-visible { outline: 2px solid #f0c978; outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main id="mgq-loader" class="loader" aria-live="polite">
+      <section class="loader-card">
+        <p class="loader-kicker">MONSTER GIRL QUEST · IMMERSIVE HOST</p>
+        <h1 class="loader-title">正在准备勇战舞台</h1>
+        <p id="mgq-loader-status" class="loader-status">正在载入轻量启动器；正式游戏只会在常驻舞台中运行一份。</p>
+        <button id="mgq-loader-retry" class="loader-retry" type="button">重新连接</button>
+      </section>
+    </main>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+
+    const LOADER_URLS = Object.freeze(
+      (Array.isArray(globalThis.__MGQ_CARD_MESSAGE_LOADER_URLS__)
+        ? globalThis.__MGQ_CARD_MESSAGE_LOADER_URLS__
+        : [])
+        .map(value => String(value || '').trim())
+        .filter(value => /^https:\/\//i.test(value)),
+    );
+    const CARD_RELEASE_LOCK = globalThis.__MGQ_CARD_RELEASE_LOCK__
+      && typeof globalThis.__MGQ_CARD_RELEASE_LOCK__ === 'object'
+      && !Array.isArray(globalThis.__MGQ_CARD_RELEASE_LOCK__)
+      ? globalThis.__MGQ_CARD_RELEASE_LOCK__
+      : null;
+    const status = document.getElementById('mgq-loader-status');
+    const loader = document.getElementById('mgq-loader');
+    const retry = document.getElementById('mgq-loader-retry');
+    let revision = 0;
+
+    function lockedMessageLoaderMetadata() {
+      const record = CARD_RELEASE_LOCK?.files?.['message-loader.html'];
+      const size = record?.size;
+      const sha256 = String(record?.sha256 || '').trim().toLowerCase();
+      if (!Number.isInteger(size) || size <= 0 || !/^[0-9a-f]{64}$/.test(sha256)) {
+        throw new Error('locked message-loader metadata is unavailable');
+      }
+      if (!globalThis.crypto?.subtle || typeof TextDecoder !== 'function') {
+        throw new Error('WebCrypto integrity verification is unavailable');
+      }
+      return Object.freeze({ size, sha256 });
+    }
+
+    async function verifiedMessageLoaderHtml(response, metadata) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength !== metadata.size) {
+        throw new Error('message-loader size mismatch');
+      }
+      const digestBytes = new Uint8Array(
+        await globalThis.crypto.subtle.digest('SHA-256', bytes),
+      );
+      const digest = Array.from(
+        digestBytes,
+        value => value.toString(16).padStart(2, '0'),
+      ).join('');
+      if (digest !== metadata.sha256) {
+        throw new Error('message-loader sha256 mismatch');
+      }
+      return new TextDecoder().decode(bytes);
+    }
+
+    function showError(message) {
+      loader.classList.add('error');
+      status.textContent = message || '轻量启动器载入失败，请检查网络后重试。';
+    }
+
+    function injectReleaseLock(html) {
+      if (!CARD_RELEASE_LOCK) return html;
+      let serialized = '';
+      try {
+        serialized = JSON.stringify(CARD_RELEASE_LOCK).replace(/</g, '\\u003c');
+      } catch (_) {
+        return html;
+      }
+      const bootstrap = '<scr' + 'ipt>globalThis.__MGQ_CARD_RELEASE_LOCK__=Object.freeze('
+        + serialized + ');</scr' + 'ipt>';
+      return /<head\b[^>]*>/i.test(html)
+        ? html.replace(/<head\b[^>]*>/i, match => match + bootstrap)
+        : bootstrap + html;
+    }
+
+    async function loadSpa() {
+      const ticket = ++revision;
+      loader.classList.remove('error');
+      retry.disabled = true;
+      status.textContent = '正在连接常驻沉浸宿主……';
+      let lastError = null;
+
+      if (!LOADER_URLS.length) {
+        retry.disabled = false;
+        showError('卡内未提供已锁定的沉浸启动器，请重新导入新版角色卡并新建聊天。');
+        return;
+      }
+
+      let metadata;
+      try {
+        metadata = lockedMessageLoaderMetadata();
+      } catch (error) {
+        retry.disabled = false;
+        showError('无法验证常驻沉浸启动器：' + (error?.message || error || 'unknown'));
+        return;
+      }
+
+      for (const url of LOADER_URLS) {
+        try {
+          const response = await fetch(url, { cache: 'force-cache' });
+          const html = await verifiedMessageLoaderHtml(response, metadata);
+          if (ticket !== revision) return;
+          if (!/data-mgq-history-floor/.test(html) || !/__MGQ_IMMERSIVE_HOST_V1__/.test(html)) {
+            throw new Error('返回的启动器版本不兼容');
+          }
+          document.open();
+          document.write(injectReleaseLock(html));
+          document.close();
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      if (ticket !== revision) return;
+      retry.disabled = false;
+      showError('无法载入常驻沉浸启动器：' + (lastError?.message || lastError || 'unknown'));
+    }
+
+    retry.addEventListener('click', loadSpa);
+    void loadSpa();
+  })();
+  </script>
+</body>
+</html>
