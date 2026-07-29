@@ -1,9 +1,9 @@
 {
-  "base_path": "releases/2.1.0-immersive-host/b689eb3511926e19/",
+  "base_path": "releases/2.2.0-authority-runtime/6bf593990a5038bc/",
   "bgm_base_path": "bgm/",
   "bgm_protocol": "mgq-bgm-manifest/v1",
-  "build_id": "b689eb3511926e19",
-  "card_version": "2.1.0-immersive-host",
+  "build_id": "6bf593990a5038bc",
+  "card_version": "2.2.0-authority-runtime",
   "files": {
     "0ae0dbf8c1634959376c.png": {
       "sha256": "f98c873b1d464b135c7c73ade89a11db7a22b5dcb044e3cec4505837c249869a",
@@ -622,16 +622,16 @@
       "size": 300
     },
     "message-loader.html": {
-      "sha256": "aeb696323a5f6d84edcf2fc89fa184e71fb2840f3f6171778a5008e7ccf1320b",
-      "size": 131820
+      "sha256": "b3ad96041761c5531edbac97232eeb9dac920ed3301e9ab5d57a967e5747a919",
+      "size": 139480
     },
     "mgq-v4.css": {
-      "sha256": "3a71606d82783e2a828ef20d9a42d06fcaedcc318541b3db924ccd35347af335",
-      "size": 244855
+      "sha256": "9ae610275728faeca4ed48625d599c42d6a067363c55902090621897d03767c6",
+      "size": 245725
     },
     "mgq-v4.js": {
-      "sha256": "787d13ca31674a907e59481176d85719c2ab216355877b3ff5079348acae98ee",
-      "size": 1167729
+      "sha256": "221bba4434034c28eb6767e929bea5cd3fe57921b3d44f66e3cd1fb89edb49df",
+      "size": 1168856
     },
     "mgq-v4.js.LICENSE.txt": {
       "sha256": "2cf1cb93c6409f4c333c9426d4b6b3ca643d96ab12d254dac1f78d41df1fb30e",
@@ -645,6 +645,6 @@
   "immersive_protocol": "mgq-immersive/v1",
   "presentation_protocol": "mgq-message-presentation/v2",
   "schema": "mgq-release-manifest/v1",
-  "source_commit": "dcd4f2ce9e92e03b2a5ff48051870628791419ac",
+  "source_commit": "696e38dbf127967b4497a1ff647cb7b40fb03261",
   "status_protocol": "mgq-status-snapshot/v2"
 }
