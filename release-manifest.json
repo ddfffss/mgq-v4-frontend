@@ -1,10 +1,14 @@
 {
-  "base_path": "releases/2.2.0-authority-runtime/6bf593990a5038bc/",
+  "base_path": "releases/2.3.0-cycle-archive/360ba6792c06c835/",
   "bgm_base_path": "bgm/",
   "bgm_protocol": "mgq-bgm-manifest/v1",
-  "build_id": "6bf593990a5038bc",
-  "card_version": "2.2.0-authority-runtime",
+  "build_id": "360ba6792c06c835",
+  "card_version": "2.3.0-cycle-archive",
   "files": {
+    "073a008b92620e20529d.webp": {
+      "sha256": "e76fbd8440da3dc15d7933a8c6c3043c301d6d923aa347f952ea3d2f4f71fdd3",
+      "size": 144100
+    },
     "0ae0dbf8c1634959376c.png": {
       "sha256": "f98c873b1d464b135c7c73ade89a11db7a22b5dcb044e3cec4505837c249869a",
       "size": 267
@@ -12,6 +16,10 @@
     "0c74a1a032f3b46aa9e9.png": {
       "sha256": "d85dc109c2fc87e2892e79fe1ce0616ea512e5b226ae33d54506a7002e4e26e1",
       "size": 626
+    },
+    "0ced35b9d86838e2a9ce.webp": {
+      "sha256": "bba6dcd3f572cbe93cf8da7601941d5b9537086fb8d5b63924206db4379cf987",
+      "size": 183868
     },
     "120c94d341ee52060d94.png": {
       "sha256": "4d8ace56e956d6de49610c0c48d0a964ef3f7e4a35e5f6d98d87cba5039b28ed",
@@ -69,6 +77,10 @@
       "sha256": "98a0cbb270016a3d356f84b81add5f2a9e7fd09ea8612ed034d70703e357e8d5",
       "size": 296
     },
+    "44a40dad7d4bd8b7e59c.webp": {
+      "sha256": "ab0e1e4f42e1363ca91324ca233d6c6b439bc9416e9907ae0e98b59394951bb3",
+      "size": 150776
+    },
     "46508bfb91a832b404c9.png": {
       "sha256": "a8ce6696dbfbf39780a133c000e26b565cf17e1daaaea724a7c16d307db75ce5",
       "size": 173
@@ -100,6 +112,10 @@
     "61ac6df29ef770acf964.woff2": {
       "sha256": "736cfeb978bbdccd0404f0e56a561174cbff078133214254908e29655a9505e6",
       "size": 594404
+    },
+    "68582b547a694c46c512.webp": {
+      "sha256": "d7affe2eec4f0b8e8893fd52969e755686906ac0f4fa7644ebfcb678bb29493d",
+      "size": 192092
     },
     "6a47b2d9ad3188c6064f.png": {
       "sha256": "891e9eedcc9c9e127fed5576bb4cc00ae0ab4628396e176a82782598325bd514",
@@ -161,6 +177,10 @@
       "sha256": "f2755c0e5cedb7b79d889d3770fd95bd13e2f82b12f21ffa239a7f762726c601",
       "size": 785
     },
+    "99b84fe77cac674ae08a.webp": {
+      "sha256": "df7bc42f35d29e5416c3bd6820363f3ac49251b652ee2acc30c6d8abc123f13c",
+      "size": 412878
+    },
     "99d3498788a247b51258.png": {
       "sha256": "e9b8813f1e9f242ae43073316e1d50e599100c0349df5c41b67d51926140c6ba",
       "size": 1486170
@@ -181,9 +201,17 @@
       "sha256": "04e8da5262c06784807866918247c0383cbee8ee4356504f4dcca189eb632bd0",
       "size": 1131052
     },
+    "b59afe21efe806d5cc78.webp": {
+      "sha256": "34bcb3f0c9959f89cfa75f421770dfc78410a0ad291a565d82989ff3d7720e1b",
+      "size": 130380
+    },
     "b6492014060f4309b23b.png": {
       "sha256": "4431e80a221929cbaddca491510f5d8b012c30fa69be2f60b866d2f7199162eb",
       "size": 1219050
+    },
+    "b77b31350512ac3c625f.webp": {
+      "sha256": "289604dd0d93a53125fcaf0c2e0243d618417a162f26b1cc05b899af0b723837",
+      "size": 179906
     },
     "bbc46512edfbae7c82b8.png": {
       "sha256": "31dedccee1c1e0e35177cbb8f5b48a46f48ff03b4e52ab8b38517de94b290779",
@@ -622,16 +650,16 @@
       "size": 300
     },
     "message-loader.html": {
-      "sha256": "b3ad96041761c5531edbac97232eeb9dac920ed3301e9ab5d57a967e5747a919",
-      "size": 139480
+      "sha256": "246dc2532972a1c5c4510b23fe4ac9919f045c843b8fcc6bc39ba5c08c2d799b",
+      "size": 213980
     },
     "mgq-v4.css": {
-      "sha256": "9ae610275728faeca4ed48625d599c42d6a067363c55902090621897d03767c6",
-      "size": 245725
+      "sha256": "ca95b33284a208090a96474de35040623c0a5c84e227733dc5bb122eaf748906",
+      "size": 321567
     },
     "mgq-v4.js": {
-      "sha256": "221bba4434034c28eb6767e929bea5cd3fe57921b3d44f66e3cd1fb89edb49df",
-      "size": 1168856
+      "sha256": "6a4a089d22bdc551021f27069d9853a182eb920a1628efc6969d4bf74b7f1e9b",
+      "size": 1288832
     },
     "mgq-v4.js.LICENSE.txt": {
       "sha256": "2cf1cb93c6409f4c333c9426d4b6b3ca643d96ab12d254dac1f78d41df1fb30e",
@@ -645,6 +673,6 @@
   "immersive_protocol": "mgq-immersive/v1",
   "presentation_protocol": "mgq-message-presentation/v2",
   "schema": "mgq-release-manifest/v1",
-  "source_commit": "696e38dbf127967b4497a1ff647cb7b40fb03261",
+  "source_commit": "5e8713d99c6db36091ae9b3544a6a5c38a9755f9",
   "status_protocol": "mgq-status-snapshot/v2"
 }
