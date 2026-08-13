@@ -1,0 +1,690 @@
+{
+  "base_path": "releases/2.3.10-cycle-archive/2c5a626592eb8203/",
+  "bgm_base_path": "bgm/",
+  "bgm_protocol": "mgq-bgm-manifest/v1",
+  "build_id": "2c5a626592eb8203",
+  "card_version": "2.3.10-cycle-archive",
+  "files": {
+    "0ae0dbf8c1634959376c.png": {
+      "sha256": "f98c873b1d464b135c7c73ade89a11db7a22b5dcb044e3cec4505837c249869a",
+      "size": 267
+    },
+    "0c74a1a032f3b46aa9e9.png": {
+      "sha256": "d85dc109c2fc87e2892e79fe1ce0616ea512e5b226ae33d54506a7002e4e26e1",
+      "size": 626
+    },
+    "120c94d341ee52060d94.png": {
+      "sha256": "4d8ace56e956d6de49610c0c48d0a964ef3f7e4a35e5f6d98d87cba5039b28ed",
+      "size": 342
+    },
+    "149feff679648c5cebf4.png": {
+      "sha256": "80eac03d26866a23fff8783127f90dc8673ee61591a069a4f6b24b3a2ded1101",
+      "size": 626
+    },
+    "179014d1c422bf247c1f.webp": {
+      "sha256": "95dc250a72dbff17f78a14381952f1a856474f7e7ad4da128048fd3f6a0da877",
+      "size": 147972
+    },
+    "18cfc32d17b648928e7c.png": {
+      "sha256": "5b4d009e53537db8f6f666e2df193d5611238b955bac14d9f7448e1c79767401",
+      "size": 1039997
+    },
+    "1a3173a17f0ed1dad896.png": {
+      "sha256": "7702acc5825cd618d1462fb4588fd7cf8a81b813fcd6bd6f8e70c2b773fdaed0",
+      "size": 1165827
+    },
+    "1aa4d3623d2c2994c8b9.png": {
+      "sha256": "bd7755980ee168e057bf2492d1e721a5213e8dbe4a4ac6c51fe317ae739b7a51",
+      "size": 932276
+    },
+    "1f8defa3d055ab2bb0a1.png": {
+      "sha256": "39b6d752b049162867ff024be9c2411f9624bc8763b3cf14b218d0605a15995d",
+      "size": 888046
+    },
+    "243749498b60808eef04.png": {
+      "sha256": "f2a4444eaa3bf8818b3a4e3c1206f2eedac97c67a45174d74b5c7faa53f19ac0",
+      "size": 161
+    },
+    "2bb50ea80c22cf563735.png": {
+      "sha256": "68ebfc8f01d1781b7bae89e88db699f97975a984fb3eba93be7923fefafddb65",
+      "size": 238
+    },
+    "2f2845852867d50154e9.webp": {
+      "sha256": "1b34d124bdcd638f986d1a556d03f0c2bdc5bf9d25cf175fa955ed41e9deedd2",
+      "size": 257870
+    },
+    "3337efdc0f5c37aad732.png": {
+      "sha256": "4af53cd28256e8e6d2ac99a3e0af2c16e7c8ea73e94f0cf238424f6a2ea2e593",
+      "size": 774395
+    },
+    "361b5a442aab67774b29.png": {
+      "sha256": "55d8b9983bf41154f9e34f0241ebd924782dd0dc1987939729a95b2175de1504",
+      "size": 274
+    },
+    "38949c54480f02991c15.png": {
+      "sha256": "70a82e26bc71b8518fb1ec2d8139ee614e9df8d805697817c4d0236368fa1fa8",
+      "size": 234
+    },
+    "3bd49937ba05989a4dee.png": {
+      "sha256": "3eb633ecb33b932cf2bc9117aea40ad7e87a18a4600ba971a540b698e5c70a61",
+      "size": 337
+    },
+    "3dda30e75b89fbf387a1.png": {
+      "sha256": "b258a4fa5c54e1e4dac6617026f56c4879ab98d5af82b2a5a38ec7701448c139",
+      "size": 1207758
+    },
+    "40d1128697e40863be45.webp": {
+      "sha256": "9d3f39e6a40ef415a788233599c7287dda16831ac8dbbee8522a01f297e4af0e",
+      "size": 227692
+    },
+    "43230aed494a7664613e.png": {
+      "sha256": "98a0cbb270016a3d356f84b81add5f2a9e7fd09ea8612ed034d70703e357e8d5",
+      "size": 296
+    },
+    "46508bfb91a832b404c9.png": {
+      "sha256": "a8ce6696dbfbf39780a133c000e26b565cf17e1daaaea724a7c16d307db75ce5",
+      "size": 173
+    },
+    "473efab8f223c69d966e.png": {
+      "sha256": "540b295d91b085e331c156938e497fdfbc3a4f95cc9ed310ce97cf7a1df504f9",
+      "size": 1354043
+    },
+    "4b6fb30ca0bc048307fb.png": {
+      "sha256": "a59d5a09800b6211d8446c4ad0f74b538895a8097b8929b4d939d2fdab0f44f0",
+      "size": 1341540
+    },
+    "4e4796197898af41eef1.webp": {
+      "sha256": "f1d0a558ec66866424e7909b4cc4a3897152344297260728d72069b887da500d",
+      "size": 406588
+    },
+    "50bddbc73a984c057ece.png": {
+      "sha256": "cf01f14367134e031bbde892ccc4f69fb0716a30c4e361c85d6ed20c96326897",
+      "size": 1460535
+    },
+    "5323cf8fcae452f4cd2e.jpg": {
+      "sha256": "48e9fa1b87f1e0aacbe4e38a795911118d2b8d9332d153308fe07fc8cc1aa3c1",
+      "size": 66996
+    },
+    "57b0674187633f99e0ff.png": {
+      "sha256": "e54cc2d09b8f6a75e628c7a4158baf380e38bad63188d694b3130ba9d74c2941",
+      "size": 631
+    },
+    "61444425363fb77db526.png": {
+      "sha256": "783fa8e69c693a51584d7d27b62beb7eaf66c7b44168baa4191076907d7bfb33",
+      "size": 1389943
+    },
+    "61ac6df29ef770acf964.woff2": {
+      "sha256": "736cfeb978bbdccd0404f0e56a561174cbff078133214254908e29655a9505e6",
+      "size": 594404
+    },
+    "6a47b2d9ad3188c6064f.png": {
+      "sha256": "891e9eedcc9c9e127fed5576bb4cc00ae0ab4628396e176a82782598325bd514",
+      "size": 966423
+    },
+    "6aa8ea908dc06800f67c.png": {
+      "sha256": "ac45945b7528d578c7ffbaba653e8f95d44d66852e5500b773944f388e00d1f6",
+      "size": 1141397
+    },
+    "70883be93b991ee4f661.png": {
+      "sha256": "5d90dbf359358c977cd80f7576539072a58dc5f54254d28b4ed0fab321d5ba51",
+      "size": 1331515
+    },
+    "76b7f10cf41711168916.png": {
+      "sha256": "42a0589f46cd507ded20177e08ee215235310bc9d0fef8a92059bcf1a99fa46f",
+      "size": 328
+    },
+    "7a8c4d38ad59ae76249f.png": {
+      "sha256": "cee150c027a65cd2933d18c7d86083bd7713d7f792037299a9c6561811c9fba7",
+      "size": 799
+    },
+    "8019995b04af0ec66560.png": {
+      "sha256": "1332ae6b19a261e2dfdd54269ee3f173115a3e8bfbdb1ad0f6b87153d3e68c03",
+      "size": 335
+    },
+    "83a2b404f444adc1dc10.png": {
+      "sha256": "1bfa620503f320fe8bebabc809aad99444c6e781226a4cba9085f9c3dd9a1ea5",
+      "size": 971643
+    },
+    "8501ea49aa595e51f1c2.png": {
+      "sha256": "108e40c7c0aafe8f03ef9ce11b0829dcc9153b98e01fc5a394944c030342545a",
+      "size": 867691
+    },
+    "857f0d0979401ada20b5.png": {
+      "sha256": "4bfe574ccae2e09c32a667f456f714a5c705a594068dd99a4cfa49815a6c1c4f",
+      "size": 786
+    },
+    "85cdeda54b7726f47bf4.webp": {
+      "sha256": "2bb59f5033c01bfe1b37c761f8767481ce2f6b356e455dbb238d2a133fec2a37",
+      "size": 115712
+    },
+    "8ac87ed690e83d732203.png": {
+      "sha256": "fae1d308cf2a5df792d11d108564f2f8c53492673947ca6e2b7134a3a9830b80",
+      "size": 341
+    },
+    "8cfb669888fa06f3776d.png": {
+      "sha256": "486a4f174b13751f7a840a0506660ac34b258bca09c4d1b275310139c06a7d26",
+      "size": 161
+    },
+    "8d32ba72d611df2d5fa1.webp": {
+      "sha256": "c783bec466a9202469313a5128abf1888d58c76c3a4d618a684b954ef4c78b6e",
+      "size": 51988
+    },
+    "8f7a85d4e9c52d8328d1.png": {
+      "sha256": "9339ab3b3e7112295be7f7356aab1d69119691abcbc177e43a542525d890632a",
+      "size": 1284335
+    },
+    "929487b306820d746a15.png": {
+      "sha256": "6308da6018563c0cfcccd3b838b15610bcf4508bd0bad33806117e6ea47c6146",
+      "size": 1168932
+    },
+    "96f2258002f64121ceda.png": {
+      "sha256": "d022e173423348b69bd970d570c382870acad3ec393ebf6cb54f5938492a5823",
+      "size": 145
+    },
+    "9799b57dd6a90c63a131.png": {
+      "sha256": "f2755c0e5cedb7b79d889d3770fd95bd13e2f82b12f21ffa239a7f762726c601",
+      "size": 785
+    },
+    "99d3498788a247b51258.png": {
+      "sha256": "e9b8813f1e9f242ae43073316e1d50e599100c0349df5c41b67d51926140c6ba",
+      "size": 1486170
+    },
+    "9a845b890f980d450b7c.png": {
+      "sha256": "d5173f4f5d32809a4a913021b233515c6f5382aa6389a03ddc13defa6d40476e",
+      "size": 1053144
+    },
+    "a0bdeee0b526c0f46c1a.png": {
+      "sha256": "3c1179b6dcd035e42bb1b63ebcd1a261a16437acf8fbac2b981f6f9f19beb0b7",
+      "size": 1076937
+    },
+    "a1f3dded7e9c8163207b.png": {
+      "sha256": "3249a67147a4d4d8374957af77a27b7f2256130fd9edca73f2bafaf5c5bbd4db",
+      "size": 646
+    },
+    "aa64b50ded1d12cbbb8e.webp": {
+      "sha256": "29e6e9210f2fd9549652939931e2e285c1d6b17df435ad5f772179e1b648d11d",
+      "size": 174440
+    },
+    "b166333cae864ec6ad67.png": {
+      "sha256": "04e8da5262c06784807866918247c0383cbee8ee4356504f4dcca189eb632bd0",
+      "size": 1131052
+    },
+    "b2fef4d525a47b5992a4.webp": {
+      "sha256": "0f124698832a491716985990d62dce5edd340f93b1c9ce6decfdf6a535b8bdba",
+      "size": 253524
+    },
+    "b6492014060f4309b23b.png": {
+      "sha256": "4431e80a221929cbaddca491510f5d8b012c30fa69be2f60b866d2f7199162eb",
+      "size": 1219050
+    },
+    "bbc46512edfbae7c82b8.png": {
+      "sha256": "31dedccee1c1e0e35177cbb8f5b48a46f48ff03b4e52ab8b38517de94b290779",
+      "size": 285
+    },
+    "bdc0a6a9540f6696caeb.png": {
+      "sha256": "dd425f15b0132babac700c2e3e897b0cd64d4cce76dbc6b33804970a09565dba",
+      "size": 841905
+    },
+    "bfa98ef7da3786d2f3f7.png": {
+      "sha256": "3632488a092f59604352208da0936bf3e3ca3e3457b699b7318697e6c57d52ac",
+      "size": 334
+    },
+    "bgm-manifest.json": {
+      "sha256": "4613d42e869b02ef6519825e29ffc096bd551415b3e1830e79d3c86cd20868b2",
+      "size": 15338
+    },
+    "bgm/在梦中窥视到的未来 - BOSS战1.mp3": {
+      "sha256": "865c371539d8047bb48ddbe06ba127bc8e75d0cc2859dd3eb31530a4e2e14702",
+      "size": 4743234
+    },
+    "bgm/在梦中窥视到的未来 - BOSS战2.mp3": {
+      "sha256": "9817a16bda542533bd7dca1ef321b27f5d1ca6a7f767233219c77bbac9f5cd9d",
+      "size": 1503632
+    },
+    "bgm/在梦中窥视到的未来 - BOSS战3.mp3": {
+      "sha256": "bc5cfa9cc5792b03f3e0e373d7d01db2acc0a0d2effa46c11041b33c69e8842f",
+      "size": 882860
+    },
+    "bgm/在梦中窥视到的未来 - BOSS战前.mp3": {
+      "sha256": "0f5eb132d93ff44c6df4c108ba5db3df4560c05c1667e8ecd87679e339385ffc",
+      "size": 2123836
+    },
+    "bgm/在梦中窥视到的未来 - H挑战.mp3": {
+      "sha256": "350882ef421319ab80b54fb60467a6eec26d58fba4afd4ccf193f75a1dfdd0b0",
+      "size": 4305035
+    },
+    "bgm/在梦中窥视到的未来 - 世界之腹.mp3": {
+      "sha256": "0145e03e34901babebc62eea8a76b703e6f3da28854b9b79767b8fcc96e89609",
+      "size": 7836107
+    },
+    "bgm/在梦中窥视到的未来 - 中章结尾曲.mp3": {
+      "sha256": "9092e64dd20a29fadf3478302983c0ae25570f19c436a1eadbf376d244e2bb9e",
+      "size": 3396740
+    },
+    "bgm/在梦中窥视到的未来 - 事件解决.mp3": {
+      "sha256": "b04f65403e312cd93b6a45cc87e9db50a430ffcaff6f9605cd60736a19581e66",
+      "size": 2046138
+    },
+    "bgm/在梦中窥视到的未来 - 伊丽娅丝.mp3": {
+      "sha256": "aa6db664c150bc265eb27c8290f5a09e3f9f4dab28e8a1cab08e44a63cd79dba",
+      "size": 3355695
+    },
+    "bgm/在梦中窥视到的未来 - 伊丽娅丝最终战.mp3": {
+      "sha256": "d6996910a75210c444ce1d44ea8f6dc06be2963e943e10d79c211a17322d6dec",
+      "size": 3496296
+    },
+    "bgm/在梦中窥视到的未来 - 伊利亚斯战.mp3": {
+      "sha256": "d2728473777bae1dfd02fcd067db904e7f091a4cfc149d8a6f42464d913c1330",
+      "size": 3990069
+    },
+    "bgm/在梦中窥视到的未来 - 伊利亚斯村.mp3": {
+      "sha256": "9e486cdd1838c72b50426fe573f961f563346e51479e51eb8ed18e80f3a5a3c4",
+      "size": 1883599
+    },
+    "bgm/在梦中窥视到的未来 - 北方的鬼屋.mp3": {
+      "sha256": "a839cdd326632ddca3c2fffbc20296540347caf130ad9f4ff5c4fec36c5bdecc",
+      "size": 823611
+    },
+    "bgm/在梦中窥视到的未来 - 危机1.mp3": {
+      "sha256": "1595fedcb74c04022b65b5e39d388883c6e61ba31fb523b7c1a0090620caefe4",
+      "size": 1998052
+    },
+    "bgm/在梦中窥视到的未来 - 危机2.mp3": {
+      "sha256": "be03383007256dd28b9e21b537ce01bde3eb30fa235ece06456b99796029e24d",
+      "size": 1986349
+    },
+    "bgm/在梦中窥视到的未来 - 危机3.mp3": {
+      "sha256": "6c22d0ed01cc6d91acc53dda9ea9e952e142aa6ab63e70f516d3313076811974",
+      "size": 1998052
+    },
+    "bgm/在梦中窥视到的未来 - 古兰德诺亚城.mp3": {
+      "sha256": "85a0b6bfbe88c2b6ef2c8691a979b15ccbd46410d5bfcf4f78dadeb67347af64",
+      "size": 4279426
+    },
+    "bgm/在梦中窥视到的未来 - 吹雪.mp3": {
+      "sha256": "7af50a1d9538dc7f5e125d52a964a091babdbd005c42384a19c3b1f4e22bdb1e",
+      "size": 1730118
+    },
+    "bgm/在梦中窥视到的未来 - 四天王.mp3": {
+      "sha256": "0b8bcf0e22bbf44af1152be83b76b8c5e58567da6b560f7b5dce1e972aa14ae7",
+      "size": 4042807
+    },
+    "bgm/在梦中窥视到的未来 - 四精灵.mp3": {
+      "sha256": "2c861a2f280d1d658f29dfb138fea4b7ab952bb9255cb5e95fff396795a939da",
+      "size": 665598
+    },
+    "bgm/在梦中窥视到的未来 - 四精灵战.mp3": {
+      "sha256": "05852b97f83558f600ea0a72964bf8b68d3e398780faa97e8c76f5050a407e87",
+      "size": 1844265
+    },
+    "bgm/在梦中窥视到的未来 - 圆环斗技场.mp3": {
+      "sha256": "fb808a2e7cd513825cbe2489417de1f559841e44707f332694a24cf13a3c27a1",
+      "size": 1653452
+    },
+    "bgm/在梦中窥视到的未来 - 圣·伊利亚城.mp3": {
+      "sha256": "b07514f34ee51cc08128ef40ef1039a3b602765252f2f98ce27daaaf304cb096",
+      "size": 3949304
+    },
+    "bgm/在梦中窥视到的未来 - 地下实验室.mp3": {
+      "sha256": "734f9d08922f510862e0ada4d40d7dfe66d4f3aa86ab162771d92a0d866bd205",
+      "size": 1154698
+    },
+    "bgm/在梦中窥视到的未来 - 城镇.mp3": {
+      "sha256": "d8055bdaac68fba70d799c93daa8a086e3390da7c6a8a8e1f5f8c33610914d88",
+      "size": 3493155
+    },
+    "bgm/在梦中窥视到的未来 - 大图书馆.mp3": {
+      "sha256": "8e608ca9dae541d29c31960af80120073ae09467a66cdc7d687ce73966f074cd",
+      "size": 2462825
+    },
+    "bgm/在梦中窥视到的未来 - 大天使伊甸.mp3": {
+      "sha256": "bc3366414cf5e062c3f16530b658fe5fe22bb8126320a93faf2c777f48c2d638",
+      "size": 4100873
+    },
+    "bgm/在梦中窥视到的未来 - 天使战.mp3": {
+      "sha256": "0f92e8b0f7ca95058819b5e3561fe9daf4baeef99c6307581ac2fb1c47377bb7",
+      "size": 2290624
+    },
+    "bgm/在梦中窥视到的未来 - 天界.mp3": {
+      "sha256": "049d4ed97f80803cf6e83bbc2525b64c71d1b131148786ecbc61948cf1944f14",
+      "size": 4016773
+    },
+    "bgm/在梦中窥视到的未来 - 天界之塔.mp3": {
+      "sha256": "3d91a1cd0df8d9d2b3093d58a5cefbb3d5ffdeccf32bbb35c9522e9eae7ac272",
+      "size": 2763381
+    },
+    "bgm/在梦中窥视到的未来 - 宴会.mp3": {
+      "sha256": "38f305c1718bc09df8d9e85f10ca1b77788035ee5bcb36f0b19c4cdfab0f884f",
+      "size": 929875
+    },
+    "bgm/在梦中窥视到的未来 - 宴会2.mp3": {
+      "sha256": "8b47f51495af5a5b907acd55318c7d1ddf125bac2c007b210e72ec68730a32ca",
+      "size": 758385
+    },
+    "bgm/在梦中窥视到的未来 - 帕兰赛特村.mp3": {
+      "sha256": "48e33e4d8424f31a94debec96836f52d84e6e982cb0c7be338576b9b2ceed310",
+      "size": 1217594
+    },
+    "bgm/在梦中窥视到的未来 - 平稳1.mp3": {
+      "sha256": "ea640ece76f8e9c2aeaa5dc0de27adb3d415d482d8bd8b8ad5fd94fd060de340",
+      "size": 875812
+    },
+    "bgm/在梦中窥视到的未来 - 平稳2.mp3": {
+      "sha256": "209cf7aa233e7ee4b00b4e81e503c9b5fbe1592090db9491c574f6fe4b688caa",
+      "size": 728292
+    },
+    "bgm/在梦中窥视到的未来 - 平稳3.mp3": {
+      "sha256": "6add2dd1ba6295c8c6b92768750794dba783206686dd9144b3134aa942dac378",
+      "size": 1593448
+    },
+    "bgm/在梦中窥视到的未来 - 开篇音乐.mp3": {
+      "sha256": "a73453f707cef80e36a61f208b52c7650317f3a811b6e3cae2f8a03598bc91da",
+      "size": 2370294
+    },
+    "bgm/在梦中窥视到的未来 - 恩瑞卡.mp3": {
+      "sha256": "433fa1ed2048975bf556bad74a0d8673347cd4124a6fce7d090afb645b246b75",
+      "size": 1405032
+    },
+    "bgm/在梦中窥视到的未来 - 悲伤1.mp3": {
+      "sha256": "c5da5cb536964b9264b4f2f262eca76c10aba534c85598a250a9396d8a94076f",
+      "size": 5174926
+    },
+    "bgm/在梦中窥视到的未来 - 悲哀1.mp3": {
+      "sha256": "3a245b597a1f27910a134ebd89a8ad7aaf29e83a966f8a7f5005fd476a717124",
+      "size": 1214359
+    },
+    "bgm/在梦中窥视到的未来 - 悲哀2.mp3": {
+      "sha256": "eb1c8fd962ff794be58f66728b83d6776415a65e1eca3316177148f6ac2b937b",
+      "size": 1367750
+    },
+    "bgm/在梦中窥视到的未来 - 戈德港口.mp3": {
+      "sha256": "3f325841f62c399c3a544d2684c8fd39e6b642fed77140bd65c4aa3c668b4724",
+      "size": 1985514
+    },
+    "bgm/在梦中窥视到的未来 - 戈德火山.mp3": {
+      "sha256": "6283e0017c9f6443c5fc40d3fc5a301fa900f2be5901e6d30a096d330d93af32",
+      "size": 1854276
+    },
+    "bgm/在梦中窥视到的未来 - 救出.mp3": {
+      "sha256": "2201f69965695d3c92ed938ae4ebdf4a63419e06cbc737cea7ddfeb0dd81a2cb",
+      "size": 3501011
+    },
+    "bgm/在梦中窥视到的未来 - 明镜止水.mp3": {
+      "sha256": "e94058f27c1a2f05f3fbcf6fa923be4d624c8ccdc4ce8b3155daffe2be8373bb",
+      "size": 1412546
+    },
+    "bgm/在梦中窥视到的未来 - 普罗米修斯1.mp3": {
+      "sha256": "10a828548fd0b474277eab5d9ffed2f9d4701e3c1e73e3c8182f548a32888cca",
+      "size": 7865037
+    },
+    "bgm/在梦中窥视到的未来 - 普罗米修斯2.mp3": {
+      "sha256": "ec0fc2e05191034967a663afa89d85456cfb9e0818de68bb828c7be1912f488b",
+      "size": 1502379
+    },
+    "bgm/在梦中窥视到的未来 - 普罗米修斯研究所.mp3": {
+      "sha256": "ae73289002b54c63be70426928bdb5249991e15030d2520012faea7d325bb1e7",
+      "size": 2499677
+    },
+    "bgm/在梦中窥视到的未来 - 村.mp3": {
+      "sha256": "e500b05fa1d2778126406c6639accf96e42c62721c6be9a4582216995a2897f2",
+      "size": 2242116
+    },
+    "bgm/在梦中窥视到的未来 - 格兰戈德城.mp3": {
+      "sha256": "6b9010e8fbcbc1d886ce84cc7f2778c205dc33402c105db5bc15248ba6a525c2",
+      "size": 1435085
+    },
+    "bgm/在梦中窥视到的未来 - 残念的亚米拉.mp3": {
+      "sha256": "f87293ca11ac8fecc7679091e78a6c84e10dbd1280eef2958a4e4c8f84135b66",
+      "size": 729178
+    },
+    "bgm/在梦中窥视到的未来 - 沙漠.mp3": {
+      "sha256": "ae6cbddf461e2922b1e7263ea47c535e60a715506b0a2dbe6100cd4838b1b45e",
+      "size": 1876463
+    },
+    "bgm/在梦中窥视到的未来 - 海.mp3": {
+      "sha256": "0898c572638074981abaa7b08f7bc086fef5ccacfbc8b92f1e2d8b074bbc66fe",
+      "size": 739156
+    },
+    "bgm/在梦中窥视到的未来 - 海中.mp3": {
+      "sha256": "bf034e40c8a08222c3bbc0fc299eeb3d792414ebfddd31160bca5bda781cbb54",
+      "size": 4135473
+    },
+    "bgm/在梦中窥视到的未来 - 温迪妮之泉.mp3": {
+      "sha256": "37331011006b93ee929e0468ba3105e23c644d5959def0e9757d056e5f2bff06",
+      "size": 1889833
+    },
+    "bgm/在梦中窥视到的未来 - 滑稽.mp3": {
+      "sha256": "7bc8e26525dbcd4d7ef65f843759722c8e1bb73c113e748804eb50f1fb9f9bb1",
+      "size": 2137880
+    },
+    "bgm/在梦中窥视到的未来 - 爱丽丝1.mp3": {
+      "sha256": "2569ca2cf5cbe0f8433c6d25b2bc4984351de4de9e0f0890645ebf6064508666",
+      "size": 1169305
+    },
+    "bgm/在梦中窥视到的未来 - 爱丽丝2.mp3": {
+      "sha256": "226985d299bc9049969766d543a75d65e915df4b4715163a969d37ef281f1a76",
+      "size": 3355685
+    },
+    "bgm/在梦中窥视到的未来 - 爱丽丝3.mp3": {
+      "sha256": "7a884fab452e486d8c69f26321845bc1ca57fb759dba5ef5e577c66ee643e460",
+      "size": 3493578
+    },
+    "bgm/在梦中窥视到的未来 - 玉藻.mp3": {
+      "sha256": "21e5c5195509cb688e95ef9659e7fdff3bf628aabd2f075046980f80a8bb8979",
+      "size": 1338435
+    },
+    "bgm/在梦中窥视到的未来 - 生物实验室.mp3": {
+      "sha256": "25ff7569c3ce518af1feb0b1b0ef646d05318509deb21904db93c5440a995099",
+      "size": 1842939
+    },
+    "bgm/在梦中窥视到的未来 - 神鸟迦楼达.mp3": {
+      "sha256": "65f98301787f43653d2e520ead4f40a8d0faff463c745706326d6619dca98088",
+      "size": 557853
+    },
+    "bgm/在梦中窥视到的未来 - 精灵之森.mp3": {
+      "sha256": "a0487a3931287c8ebf2c1dd55a2216d91d16834d66347702e19702651873a31f",
+      "size": 2752225
+    },
+    "bgm/在梦中窥视到的未来 - 终章结尾曲.mp3": {
+      "sha256": "821684e853699830c3bac575bdd6a4ade31e1c4794c9419f6dc619dd82d74060",
+      "size": 4166910
+    },
+    "bgm/在梦中窥视到的未来 - 莉莉公馆.mp3": {
+      "sha256": "f67ee34f8213b4e54a69fb58b66fc055a158ed309329d51a4e349281183cb870",
+      "size": 4927098
+    },
+    "bgm/在梦中窥视到的未来 - 莱米那.mp3": {
+      "sha256": "5dae39ed8f8f0b0ca7455a36625edc5e893ceef9c88b25dd18be25ce52b09d91",
+      "size": 2450328
+    },
+    "bgm/在梦中窥视到的未来 - 萨巴撒居民区.mp3": {
+      "sha256": "702aa57da7245f9653d48a119c4ae861c258be513f426520ea7296645c8ffd94",
+      "size": 1368278
+    },
+    "bgm/在梦中窥视到的未来 - 萨巴撒王城.mp3": {
+      "sha256": "1f5b2f851ca55a31e3c6d006eb84f013475d1665cd6f69f3c8219c8a898691bd",
+      "size": 3312228
+    },
+    "bgm/在梦中窥视到的未来 - 萨法鲁遗迹.mp3": {
+      "sha256": "b81d74c77ff89ebf749e168e2fa12786a7837732816618da99904a8d6b80f139",
+      "size": 2452442
+    },
+    "bgm/在梦中窥视到的未来 - 被制压的萨巴撒.mp3": {
+      "sha256": "1c8992440b993c74f9b3899c5f6a57293006bc18b59fee2e83cb454e9e7a636d",
+      "size": 1492373
+    },
+    "bgm/在梦中窥视到的未来 - 觉醒.mp3": {
+      "sha256": "ce4add10ab66507941f0f3e099114b933abb57105a179a8e26241c7da3b6fa9b",
+      "size": 3613901
+    },
+    "bgm/在梦中窥视到的未来 - 踏上征程1.mp3": {
+      "sha256": "98d00e0301d71dd5f72f7d5e9d30be8bf42f4229a2c127761a2c0f545369d3d2",
+      "size": 2196361
+    },
+    "bgm/在梦中窥视到的未来 - 踏上征程2.mp3": {
+      "sha256": "585a05276f92e3f10568b775b53c14c5c02a073fa461c77adcc64ae9dd753dfe",
+      "size": 4472566
+    },
+    "bgm/在梦中窥视到的未来 - 踏上征程3.mp3": {
+      "sha256": "964455a5ea74ae0452975873ac791455427e41630d9eefc215fba1fcdbf0445f",
+      "size": 2097894
+    },
+    "bgm/在梦中窥视到的未来 - 迷宫1.mp3": {
+      "sha256": "1c8eb1e38fbbacbc54f40e2b6c5a49f03bcaa88487eb8f156b3dfeeae7b0776e",
+      "size": 1725961
+    },
+    "bgm/在梦中窥视到的未来 - 逆袭.mp3": {
+      "sha256": "3497f8c9f6a3ea83b07ab94bba71444580f796e4133ea215a885c462ad698756",
+      "size": 2539327
+    },
+    "bgm/在梦中窥视到的未来 - 通常战斗.mp3": {
+      "sha256": "02e16f83c2c5f2c74634ea04ff4629ea18548eff02527b614ec218f9fa179811",
+      "size": 1382399
+    },
+    "bgm/在梦中窥视到的未来 - 邪马台村.mp3": {
+      "sha256": "0bbdcc3ce66e46dec666accc5e28a2d4421f73861a0566ddb3de53649e2955d7",
+      "size": 1762182
+    },
+    "bgm/在梦中窥视到的未来 - 野营.mp3": {
+      "sha256": "7df19ca5148842625f2e45d1afab9f941d2dd019de8c8279c3b729d83e86514d",
+      "size": 3189156
+    },
+    "bgm/在梦中窥视到的未来 - 金字塔.mp3": {
+      "sha256": "3c837a13ded3d34642ed7adce2a0a1a95ce66f24ca0f2f04ae13caeec4ff35fa",
+      "size": 1343990
+    },
+    "bgm/在梦中窥视到的未来 - 魔女狩猎村.mp3": {
+      "sha256": "98e5d42221bb1473c114dcadaa3aa4930423bd2152f86ab2e6532c6790c0c457",
+      "size": 891930
+    },
+    "bgm/在梦中窥视到的未来 - 魔物图鉴.mp3": {
+      "sha256": "17f0464aaca397b55e10d13b5992522ca61f05105dd0c574b21fef6009be01ca",
+      "size": 1930581
+    },
+    "bgm/在梦中窥视到的未来 - 魔王城1.mp3": {
+      "sha256": "f71aa6b0de4bd40f340893fd98d0f321440bc505dd3b4a2848f00f845f537b3b",
+      "size": 2126033
+    },
+    "bgm/在梦中窥视到的未来 - 魔王城2.mp3": {
+      "sha256": "b7dcfac76b59da0462210d71da240eeabfb907d9ebe96172941aa75bfcdcc6e8",
+      "size": 805617
+    },
+    "bgm/在梦中窥视到的未来 - 魔王大陆.mp3": {
+      "sha256": "8af1cef8ee5e8a499253bb3caa94522ac8b1c9267fe498253b7e386871fe5cac",
+      "size": 3794045
+    },
+    "bgm/在梦中窥视到的未来 - 魔王战.mp3": {
+      "sha256": "3f3e795d0e72b2680ce3047102b3e8f870dff474d5606c9990fe0f9038c023c4",
+      "size": 5032018
+    },
+    "bgm/在梦中窥视到的未来 - 鲁卡暴怒.mp3": {
+      "sha256": "32d295e22487011482cb5100f9ae325f91f11aa18cbdb693f05238701f206bdf",
+      "size": 2171230
+    },
+    "bgm/在梦中窥视到的未来 - 黑之爱丽丝1.mp3": {
+      "sha256": "de10e8734261519bfacb041224777d4a7560f389c8e9aeaf7fece9cab361de20",
+      "size": 1885421
+    },
+    "bgm/在梦中窥视到的未来 - 黑之爱丽丝2.mp3": {
+      "sha256": "fb345ad01d9ed7432c1836d62e4b633ac6b13113fdbfca304f3b66230d76a04b",
+      "size": 1404246
+    },
+    "bgm/在梦中窥视到的未来 - 黑之爱丽丝3.mp3": {
+      "sha256": "cfeece952528201851e02e88a802930c3fc02ebccb689ff5ea75684550dca289",
+      "size": 5603384
+    },
+    "bgm/琪露诺-希尔芙 - H场景.mp3": {
+      "sha256": "17868e8a6fb39701c0adbb521bb9bef20ee6f00ebb7c432e2c4e748e9ce8b2d2",
+      "size": 1182089
+    },
+    "c7ec92a42b304037d7df.png": {
+      "sha256": "15e8257e323b0b265229b7bd91c5f91a80102be95e84cbc740c96963a24cee9b",
+      "size": 284
+    },
+    "cbeadd41eb6f1b830d25.png": {
+      "sha256": "c8e9ec2a5c62acce58030a1039461ad6c06ebe005ea2adef32b6da7b89d9fcea",
+      "size": 785
+    },
+    "cd22953de3ba1c9bfe4b.webp": {
+      "sha256": "f0d63ded4adad7169b7af07f5f4b4627f7d477c9ab61aa4be4252accc5292e45",
+      "size": 199360
+    },
+    "cddd4fca6023e1b80953.png": {
+      "sha256": "0afb5fe4008e529b72d890c8aa44c7d94b8613d1e0056faea7bc58f3c9763d1b",
+      "size": 588
+    },
+    "ce477fca523e673ecfcb.png": {
+      "sha256": "9704cb912e318b80d9eef9000020bdae6a8bd70813f5b8385aa33a7b65e7f38f",
+      "size": 657400
+    },
+    "d6d5b72a78eb0937872e.png": {
+      "sha256": "42ea85c56f45d16e1c7ab489857028e40aefdec04307fe0d00f0a0f7673b6295",
+      "size": 1328065
+    },
+    "d930274d67c3399f50c1.png": {
+      "sha256": "50667ba06a73d90d1383045d48674db0a2e5949ec053204a1f7f15a709953658",
+      "size": 283
+    },
+    "dc94098130787a1c2982.png": {
+      "sha256": "8b878a08171b6fe24eae9ac22c5abb5cd5825515facf49e34a4fd909c0def8fa",
+      "size": 336
+    },
+    "dd25136e1fd6411323b9.webp": {
+      "sha256": "f354c31678f8fd91bdebdba0894e0f3d2c988b7f5ca8f8e045de067f87ab8968",
+      "size": 204672
+    },
+    "e0c0e43de3a48d60b5b3.png": {
+      "sha256": "e6d4a89a2f1946aaf2a22829d2e93856c21a8e3cefb45475fc32e8ad6f9d860c",
+      "size": 341
+    },
+    "e1f445d5c646b82d5cd4.jpg": {
+      "sha256": "d92f98329933a20f0036d5cf3a3ef57b2b832f3c56e5dc629bdcdcf25043250a",
+      "size": 145828
+    },
+    "e6f93f5025f70719c9b5.png": {
+      "sha256": "3ea05463c32f8266e71d1ae0b60c603aefac6b825447675b5fdab6f7930e3039",
+      "size": 183
+    },
+    "ecfa5508f89f6c03af9e.png": {
+      "sha256": "671dc03998fd0ea7b695bed6bfa77c0545d258493158e23e3ebd3a644bc47c90",
+      "size": 160
+    },
+    "ed445dbff5c1b20e6a0e.png": {
+      "sha256": "76b458f9715d3bffc638e2fd0f007eca42913aa8c6ce78961feb31fe01922d5f",
+      "size": 161
+    },
+    "fae721df7d8133694aa9.png": {
+      "sha256": "f3583e1a112be63e1641a9837fa220b49cb1b9e0737b073607071e7b688acff8",
+      "size": 162
+    },
+    "index.html": {
+      "sha256": "7506de76a0bd5b44f89e3245740d84c2ccac454792038a1c5383c9822aba3d66",
+      "size": 300
+    },
+    "message-loader.html": {
+      "sha256": "3eae188b29adf7e9b86c41220e07343226e8813b37bc326b8beef28a5659758a",
+      "size": 243172
+    },
+    "mgq-v4.css": {
+      "sha256": "89c351d09888cccb4d6d1eab954bc222242a2d880fcab9249b9d676ba4f3b75b",
+      "size": 334376
+    },
+    "mgq-v4.js": {
+      "sha256": "19d53585692c23f526a8a6dd4e5732a10f2c030ae15a49b89a73d3bd3396e2e1",
+      "size": 1334501
+    },
+    "mgq-v4.js.LICENSE.txt": {
+      "sha256": "2cf1cb93c6409f4c333c9426d4b6b3ca643d96ab12d254dac1f78d41df1fb30e",
+      "size": 316
+    },
+    "opening.html": {
+      "sha256": "a00a4cf77e7b6c2577e61a86270d3e7061d859a66d7822b6df30f2e1c15d1009",
+      "size": 7123
+    }
+  },
+  "immersive_protocol": "mgq-immersive/v1",
+  "presentation_protocol": "mgq-message-presentation/v2",
+  "schema": "mgq-release-manifest/v1",
+  "source_commit": "54c6c739795c3be5acd4a93aa4d6cf5b6ff7d869",
+  "status_protocol": "mgq-status-snapshot/v2"
+}
