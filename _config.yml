@@ -1,0 +1,31 @@
+# GitHub Pages must not upload the full immutable release archive: the branch
+# history remains the recovery authority, while Pages serves only the formal
+# production baseline and the current QA candidate.  Raw GitHub and jsDelivr
+# continue to expose every committed historical release.
+exclude:
+  - releases/2.1.0-immersive-host
+  - releases/2.3.0-cycle-archive
+  - releases/2.3.1-cycle-archive
+  - releases/2.3.2-cycle-archive
+  - releases/2.3.3-cycle-archive
+  - releases/2.3.4-cycle-archive
+  - releases/2.3.5-cycle-archive
+  - releases/2.3.6-cycle-archive
+  - releases/2.3.7-cycle-archive
+  - releases/2.3.8-cycle-archive
+  - releases/2.3.9-cycle-archive
+  - releases/2.3.10-cycle-archive
+  - releases/2.3.11-cycle-archive
+  - releases/2.3.12-cycle-archive
+  - releases/2.3.13-cycle-archive
+  - releases/2.3.14-cycle-archive
+  - releases/2.3.15-cycle-archive
+  - releases/2.3.16-cycle-archive
+  - releases/2.3.17-cycle-archive
+  - releases/2.3.18-cycle-archive
+  - releases/2.3.19-cycle-archive
+  - releases/2.3.20-cycle-archive
+  - releases/2.3.21-cycle-archive
+  - releases/2.3.22-cycle-archive
+  - releases/2.3.23-cycle-archive
+  - releases/2.3.24-cycle-archive/b51a3f946dd6a94a
